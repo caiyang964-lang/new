@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IDEL | \u89c6\u89c9\u5bfc\u6f14\u4f5c\u54c1\u96c6</title>
+    <title>IDEL | 视觉导演作品集</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
@@ -26,7 +26,7 @@
 
         .serif { font-family: 'Playfair Display', serif; }
 
-        /* --- \u6838\u5fc3：\u6d41\u4f53\u80cc\u666f\u5c42 --- */
+        /* --- 核心：流体背景层 --- */
         .gradient-canvas {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -87,7 +87,7 @@
             100% { transform: translate(10px, -10px) scale(1.02); }
         }
 
-        /* \u70b9\u51fb\u8109\u51b2\u6ce2\u7eb9 */
+        /* 点击脉冲波纹 */
         .pulse-ring {
             position: fixed;
             border-radius: 50%;
@@ -96,7 +96,7 @@
             z-index: -1;
         }
 
-        /* \u566a\u70b9\u8d34\u56fe\u5c42 */
+        /* 噪点贴图层 */
         .noise {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -106,7 +106,7 @@
             background-image: url('https://grainy-gradients.vercel.app/noise.svg');
         }
 
-        /* \u5168\u5c40\u6bdb\u73bb\u7483\u7f69 — \u51cf\u5f31，\u8ba9 blob \u66f4\u901a\u900f */
+        /* 全局毛玻璃罩 — 减弱，让 blob 更通透 */
         .glass-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -116,7 +116,7 @@
                Replaced with slightly darker overlay for similar visual effect. */
         }
 
-        /* \u9f20\u6807\u5149\u6655\u8ddf\u968f\u5c42 — \u8ddf\u968f + \u53d8\u8272 */
+        /* 鼠标光晕跟随层 — 跟随 + 变色 */
         .cursor-glow {
             position: fixed;
             width: 400px;
@@ -128,7 +128,7 @@
             mix-blend-mode: screen;
         }
 
-        /* ========== \u6807\u9898\u9010\u5b57\u4ea4\u4e92 ========== */
+        /* ========== 标题逐字交互 ========== */
         .hero-interactive {
             perspective: 800px;
             transform-style: preserve-3d;
@@ -286,7 +286,7 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
 
-        /* \u5f39\u6846\u5165\u573a\u8fc7\u6e21 */
+        /* 弹框入场过渡 */
         [x-transition] {
             transition: opacity 0.3s ease, transform 0.3s ease;
         }
@@ -677,7 +677,7 @@
     </template>
 
     <script>
-    // ==================== Alpine.js \u6570\u636e\u5c42 ====================
+    // ==================== Alpine.js 数据层 ====================
     function portfolio() {
         return {
             // 分区数据 — 从 API 加载
@@ -761,21 +761,21 @@
         const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
         const BLOB_COUNT = 3;
         const BASE_COLORS = [
-            { h: 220, s: 80, l: 32 },  // \u6df1\u84dd，\u66f4\u9971\u548c
-            { h: 270, s: 75, l: 25 },  // \u7d2b，\u66f4\u9971\u548c
-            { h: 210, s: 50, l: 15 }   // \u8fd1\u9ed1\u84dd
+            { h: 220, s: 80, l: 32 },  // 深蓝，更饱和
+            { h: 270, s: 75, l: 25 },  // 紫，更饱和
+            { h: 210, s: 50, l: 15 }   // 近黑蓝
         ];
         const MAGNET_RADIUS = 250;
         const MAGNET_STRENGTH = 0.08;
 
-        // ==================== \u5168\u5c40\u72b6\u6001 ====================
+        // ==================== 全局状态 ====================
         const mouse = { x: 0.5, y: 0.5, vx: 0, vy: 0, speed: 0, px: 0.5, py: 0.5 };
         const scroll = { y: 0, max: 1 };
         let gyroAvailable = false;
         const gyro = { x: 0, y: 0 };
-        let heroReady = false;  // hero \u5b57\u7b26\u62c6\u5206\u5b8c\u6210\u6807\u8bb0
+        let heroReady = false;  // hero 字符拆分完成标记
 
-        // ==================== Blob \u72b6\u6001 ====================
+        // ==================== Blob 状态 ====================
         const blobs = isMobile ? [] : Array.from({ length: BLOB_COUNT }, (_, i) => ({
             el: document.getElementById('blob' + (i + 1)),
             x: 0, y: 0,
@@ -788,7 +788,7 @@
             scaleResponsiveness: 0.03 + i * 0.01
         }));
 
-        // \u7b2c\u56db\u4e2a：\u8ddf\u968f\u9f20\u6807\u7684\u5f69\u8272\u5149\u6591
+        // 第四个：跟随鼠标的彩色光斑
         const cursorBlob = isMobile ? null : document.getElementById('blob-cursor');
         const cursorBlobState = {
             x: window.innerWidth * 0.4,
@@ -796,12 +796,12 @@
             hue: 200
         };
 
-        // ==================== \u5149\u6807\u5149\u6655 ====================
+        // ==================== 光标光晕 ====================
         const cursorGlow = document.getElementById('cursorGlow');
         let glowX = window.innerWidth / 2;
         let glowY = window.innerHeight / 2;
 
-        // ==================== \u9f20\u6807\u8ddf\u8e2a ====================
+        // ==================== 鼠标跟踪 ====================
         document.addEventListener('mousemove', (e) => {
             mouse.px = mouse.x;
             mouse.py = mouse.y;
@@ -828,7 +828,7 @@
             glowY = t.clientY;
         }, { passive: true });
 
-        // ==================== \u9640\u87ba\u4eea ====================
+        // ==================== 陀螺仪 ====================
         if (window.DeviceOrientationEvent) {
             window.addEventListener('deviceorientation', (e) => {
                 if (e.gamma !== null && e.beta !== null) {
@@ -839,7 +839,7 @@
             });
         }
 
-        // ==================== \u6eda\u52a8\u8ddf\u8e2a ====================
+        // ==================== 滚动跟踪 ====================
         const mainNav = document.getElementById('mainNav');
         window.addEventListener('scroll', () => {
             scroll.y = window.scrollY;
@@ -848,7 +848,7 @@
             mainNav.classList.toggle('scrolled', scroll.y > window.innerHeight * 0.8);
         }, { passive: true });
 
-        // ==================== \u70b9\u51fb\u8109\u51b2 ====================
+        // ==================== 点击脉冲 ====================
         document.addEventListener('click', (e) => {
             if (isMobile) return;
             createPulse(e.clientX, e.clientY);
@@ -883,7 +883,7 @@
             });
         }
 
-        // ==================== \u989c\u8272\u63d2\u503c ====================
+        // ==================== 颜色插值 ====================
         function lerpColor(c1, c2, t) {
             let dh = c2.h - c1.h;
             if (dh > 180) dh -= 360;
@@ -924,7 +924,7 @@
             };
         }
 
-        // ==================== Blob \u76ee\u6807\u8ba1\u7b97 ====================
+        // ==================== Blob 目标计算 ====================
         function computeBlobTargets() {
             const scrollRatio = scroll.max > 0 ? scroll.y / scroll.max : 0;
             const inputX = gyroAvailable ? gyro.x : mouse.x;
@@ -953,7 +953,7 @@
             });
         }
 
-        // ==================== Hero \u5b57\u7b26\u62c6\u5206 ====================
+        // ==================== Hero 字符拆分 ====================
         const heroTitle = document.getElementById('heroTitle');
         const heroChars = [];
 
@@ -978,7 +978,7 @@
             }
         });
 
-        // \u9010\u5b57\u5165\u573a：\u4ece\u968f\u673a\u4f4d\u7f6e\u98d8\u5165
+        // 逐字入场：从随机位置飘入
         heroChars.forEach((c, i) => {
             const angle = Math.random() * Math.PI * 2;
             const dist = 80 + Math.random() * 150;
@@ -993,8 +993,8 @@
             }, 600 + i * 50);
         });
 
-        // \u5165\u573a\u5b8c\u6210\u540e：\u7528 getBoundingClientRect \u7f13\u5b58\u4e00\u6b21\u521d\u59cb\u4f4d\u7f6e，\u4e4b\u540e\u4e0d\u518d\u6bcf\u5e27\u53d6
-        // \u7ed9\u8db3 1.2s \u8ba9\u5b57\u7b26\u5f52\u4f4d\u5230\u7a33\u5b9a\u4f4d\u7f6e\u518d\u7f13\u5b58
+        // 入场完成后：用 getBoundingClientRect 缓存一次初始位置，之后不再每帧取
+        // 给足 1.2s 让字符归位到稳定位置再缓存
         const heroDelay = isMobile ? 800 : (600 + heroChars.length * 50 + 1200);
         setTimeout(() => {
             heroChars.forEach(c => {
@@ -1006,7 +1006,7 @@
             initScrollAnimations();
         }, heroDelay);
 
-        // ==================== Hero \u4ea4\u4e92\u8ba1\u7b97 ====================
+        // ==================== Hero 交互计算 ====================
         function computeHeroTargets() {
             if (!heroReady || heroChars.length === 0) return;
 
@@ -1014,19 +1014,19 @@
             const mx = mouse.x * window.innerWidth;
             const my = mouse.y * window.innerHeight;
 
-            // \u6574\u4f53 3D \u900f\u89c6\u503e\u659c
+            // 整体 3D 透视倾斜
             const tiltX = (mouse.y - 0.5) * 12;
             const tiltY = (mouse.x - 0.5) * -15;
             heroTitle.style.transform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
 
-            // \u6eda\u52a8\u6d88\u6563
+            // 滚动消散
             const scrollFade = Math.max(0, 1 - scrollRatio * 3);
             const spreadForce = scrollRatio * 60;
 
             heroChars.forEach((c, i) => {
                 if (!c.entered) return;
 
-                // \u7528\u7f13\u5b58\u7684\u539f\u59cb\u5e03\u5c40\u4f4d\u7f6e，\u4e0d\u53d7 transform \u5f71\u54cd → \u65e0\u53cd\u9988\u5faa\u73af
+                // 用缓存的原始布局位置，不受 transform 影响 → 无反馈循环
                 const cx = c.baseX;
                 const cy = c.baseY;
 
@@ -1034,7 +1034,7 @@
                 const dy = my - cy;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                // \u78c1\u529b\u5438\u9644
+                // 磁力吸附
                 if (dist < MAGNET_RADIUS) {
                     const force = 1 - dist / MAGNET_RADIUS;
                     const eased = force * force * force;
@@ -1047,7 +1047,7 @@
                     c.glow *= 0.9;
                 }
 
-                // \u6eda\u52a8\u6563\u5f00
+                // 滚动散开
                 if (scrollRatio > 0.05) {
                     const angle = (i / heroChars.length) * Math.PI * 2;
                     c.tx += Math.cos(angle) * spreadForce * (1 + i % 3);
@@ -1059,7 +1059,7 @@
             });
         }
 
-        // ==================== Hero \u52a8\u753b\u5e94\u7528 ====================
+        // ==================== Hero 动画应用 ====================
         function applyHeroAnimation() {
             heroChars.forEach(c => {
                 const dx = c.tx - c.x;
@@ -1079,16 +1079,16 @@
             });
         }
 
-        // ==================== \u4e3b\u52a8\u753b\u5faa\u73af\uff08\u6027\u80fd\u4f18\u5316\u7248\uff09====================
+        // ==================== 主动画循环（性能优化版）====================
         let frameCount = 0;
 
         function animate() {
             frameCount++;
 
-            // --- Blob \u76ee\u6807\u8ba1\u7b97 ---
+            // --- Blob 目标计算 ---
             if (!isMobile) computeBlobTargets();
 
-            // --- Hero \u8ba1\u7b97\uff08\u4ec5\u5728\u53ef\u89c1\u533a\u57df\u5185\u6267\u884c\uff09---
+            // --- Hero 计算（仅在可见区域内执行）---
             if (heroReady) {
                 const scrollPastHero = scroll.max > 0 && scroll.y / scroll.max > 0.15;
                 if (!scrollPastHero) {
@@ -1096,14 +1096,14 @@
                 }
             }
 
-            // --- \u9f20\u6807\u901f\u5ea6\u8870\u51cf ---
+            // --- 鼠标速度衰减 ---
             if (!isMobile) {
                 mouse.vx *= 0.92;
                 mouse.vy *= 0.92;
                 mouse.speed *= 0.92;
             }
 
-            // --- Blob \u52a8\u753b\u5e94\u7528\uff08\u5206\u5e27\u989c\u8272\u63d2\u503c\uff09---
+            // --- Blob 动画应用（分帧颜色插值）---
             const doColor = frameCount % 3 === 0;
             if (!isMobile) blobs.forEach(b => {
                 b.x += (b.tx - b.x) * b.responsiveness;
@@ -1116,7 +1116,7 @@
                 b.el.style.background = `hsla(${b.color.h},${b.color.s}%,${b.color.l}%,0.7)`;
             });
 
-            // --- \u7b2c\u56db\u4e2a blob\uff1a\u8ddf\u968f\u9f20\u6807 ---
+            // --- 第四个 blob：跟随鼠标 ---
             if (!isMobile) {
             const targetCx = mouse.x * window.innerWidth;
             const targetCy = mouse.y * window.innerHeight;
@@ -1131,7 +1131,7 @@
             cursorBlob.style.transform = `translate(${cursorBlobState.x - window.innerWidth * 0.15}px, ${cursorBlobState.y - window.innerHeight * 0.15}px)`;
 
             }  // end cursor blob
-            // --- \u5149\u6807\u5149\u6655 ---
+            // --- 光标光晕 ---
             if (!isMobile) {
                 cursorGlow.style.left = glowX + 'px';
                 cursorGlow.style.top = glowY + 'px';
@@ -1142,7 +1142,7 @@
                 }
             }
 
-            // --- Hero \u6587\u5b57 ---
+            // --- Hero 文字 ---
             applyHeroAnimation();
 
             requestAnimationFrame(animate);
@@ -1151,7 +1151,7 @@
 
 
         window.addEventListener('resize', () => {
-            // \u7a97\u53e3\u5927\u5c0f\u53d8\u5316\u65f6\u91cd\u65b0\u7f13\u5b58\u5b57\u7b26\u4f4d\u7f6e
+            // 窗口大小变化时重新缓存字符位置
             if (heroReady) {
                 heroChars.forEach(c => {
                     const rect = c.el.getBoundingClientRect();
@@ -1161,7 +1161,7 @@
             }
         });
 
-        // ==================== \u6eda\u52a8\u89c6\u5dee ====================
+        // ==================== 滚动视差 ====================
         function initScrollAnimations() {
             if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
             gsap.registerPlugin(ScrollTrigger);
