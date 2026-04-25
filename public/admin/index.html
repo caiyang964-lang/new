@@ -754,7 +754,13 @@
                     if (data.success) {
                         this.workForm.download_file = data.file.path;
                         this.workForm.original_filename = data.file.originalName;
-                        this.showToast('文件上传成功', 'success');
+                        // Auto-fill thumb and img for image files
+                        const isImage = data.file.mimetype && data.file.mimetype.startsWith('image/');
+                        if (isImage) {
+                            if (!this.workForm.thumb) this.workForm.thumb = data.file.url;
+                            if (!this.workForm.img) this.workForm.img = data.file.url;
+                        }
+                        this.showToast('文件上传成功' + (isImage ? '（已自动填充图片）' : ''), 'success');
                     }
                 } catch (err) {
                     this.showToast('上传失败', 'error');
