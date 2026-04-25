@@ -1,4 +1,12 @@
-const sharp = require('sharp');
+// sharp 是可选依赖 — 没有安装时水印功能自动跳过
+let sharp;
+try {
+    sharp = require('sharp');
+} catch (e) {
+    sharp = null;
+    console.log('⚠️  sharp 未安装，图片水印功能已跳过（不影响其他功能）');
+}
+
 const path = require('path');
 const fs = require('fs');
 
@@ -6,8 +14,8 @@ const fs = require('fs');
  * 版权保护服务
  * 
  * 功能：
- * 1. 为图片注入 EXIF 版权元数据
- * 2. 为图片添加可见水印
+ * 1. 为图片注入 EXIF 版权元数据（需要 sharp）
+ * 2. 为图片添加可见水印（需要 sharp）
  * 3. 为视频/其他文件附加版权信息文件
  * 4. 生成带版权的下载包
  */
@@ -45,9 +53,15 @@ class CopyrightService {
     }
 
     /**
-     * 为图片添加版权水印和 EXIF 数据
+     * 为图片添加版权水印和 EXIF 数据（需要 sharp）
      */
     async processImage(inputPath, outputPath, options = {}) {
+        if (!sharp) {
+            // sharp 不可用，直接复制原图
+            fs.copyFileSync(inputPath, outputPath);
+            return outputPath;
+        }
+
         const config = this.getConfig();
         const metadata = await sharp(inputPath).metadata();
         const { width, height } = metadata;
@@ -219,11 +233,11 @@ ${config.copyright_text}
         const outputFilename = `${safeName}_IDEL_${timestamp}${ext}`;
         const outputPath = path.join(__dirname, '..', 'uploads', 'watermarked', outputFilename);
 
-        if (isImage && config.embed_watermark) {
-            // 图片：添加水印 + EXIF
+        if (isImage && config.embed_watermark && sharp) {
+            // 图片：添加水印 + EXIF（需要 sharp）
             await this.processImage(originalPath, outputPath);
         } else {
-            // 非图片：直接复制，但生成版权文件
+            // 非图片 或 sharp 不可用：直接复制，但生成版权文件
             fs.copyFileSync(originalPath, outputPath);
             this.createCopyrightFile(path.dirname(outputPath), work.original_filename || outputFilename);
         }
@@ -235,7 +249,7 @@ ${config.copyright_text}
         return {
             path: outputPath,
             filename: work.original_filename || outputFilename,
-            isWatermarked: isImage && config.embed_watermark
+            isWatermarked: isImage && config.embed_watermark && !!sharp
         };
     }
 }
