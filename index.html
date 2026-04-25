@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDEL | 视觉导演作品集</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;500&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #080808;
+            --accent-color: #3b82f6;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Noto Sans SC', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .serif { font-family: 'Playfair Display', serif; }
+
+        /* --- 核心：流体背景层 --- */
+        .gradient-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -2;
+            overflow: hidden;
+            opacity: 0.9;
+            /* Blur moved to individual blobs for GPU efficiency */
+        }
+
+        .blob {
+            position: absolute;
+            width: 55vw;
+            height: 55vw;
+            border-radius: 50%;
+            mix-blend-mode: screen;
+            will-change: transform;
+            transform: translateZ(0);
+            filter: blur(40px);
+            -webkit-filter: blur(40px);
+        }
+
+        /* 移动端：CSS 驱动的 blob 动画，不走 JS RAF */
+        @media (max-width: 768px) {
+            .gradient-canvas {
+                opacity: 0.85;
+            }
+            .blob {
+                width: 70vw;
+                height: 70vw;
+                filter: blur(50px);
+                -webkit-filter: blur(50px);
+                animation: blobFloat 12s ease-in-out infinite alternate;
+            }
+            #blob1 { animation-delay: 0s; }
+            #blob2 { animation-delay: -4s; animation-duration: 15s; }
+            #blob3 { animation-delay: -8s; animation-duration: 18s; }
+            #blob-cursor {
+                display: none;
+            }
+            .cursor-glow {
+                display: none;
+            }
+            .glass-overlay {
+                background: rgba(8, 8, 8, 0.15);
+            }
+            .noise {
+                opacity: 0.02;
+            }
+            .hero-char {
+                transition: transform 0.8s ease, opacity 0.8s ease;
+            }
+        }
+
+        @keyframes blobFloat {
+            0% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -20px) scale(1.05); }
+            66% { transform: translate(-20px, 15px) scale(0.95); }
+            100% { transform: translate(10px, -10px) scale(1.02); }
+        }
+
+        /* 点击脉冲波纹 */
+        .pulse-ring {
+            position: fixed;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.15);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* 噪点贴图层 */
+        .noise {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.04;
+            pointer-events: none;
+            background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+        }
+
+        /* 全局毛玻璃罩 — 减弱，让 blob 更通透 */
+        .glass-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: rgba(8, 8, 8, 0.35);
+            /* Removed backdrop-filter: blur(18px) — too expensive for full-screen.
+               Replaced with slightly darker overlay for similar visual effect. */
+        }
+
+        /* 鼠标光晕跟随层 — 跟随 + 变色 */
+        .cursor-glow {
+            position: fixed;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+            transform: translate(-50%, -50%);
+            mix-blend-mode: screen;
+        }
+
+        /* ========== 标题逐字交互 ========== */
+        .hero-interactive {
+            perspective: 800px;
+            transform-style: preserve-3d;
+        }
+
+        .hero-interactive h1 {
+            transform-style: preserve-3d;
+            will-change: transform;
+            backface-visibility: hidden;
+        }
+
+        .hero-char {
+            display: inline-block;
+            will-change: transform, opacity, text-shadow;
+        }
+
+        .hero-char.space {
+            width: 0.3em;
+        }
+
+        .hero-char.glowing {
+            text-shadow: 0 0 40px rgba(255,255,255,0.5),
+                         0 0 80px rgba(59,130,246,0.3);
+        }
+
+        .hero-text {
+            text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .nav-link {
+            position: relative;
+            transition: color 0.3s;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute; width: 0; height: 1px; bottom: -4px; left: 0;
+            background: white; transition: width 0.3s;
+        }
+        .nav-link:hover::after { width: 100%; }
+
+        /* 导航栏：主界面正常态 */
+        #mainNav {
+            transition: background 0.5s ease, backdrop-filter 0.5s ease, 
+                        padding 0.4s ease, border-color 0.5s ease;
+            border-bottom: 1px solid transparent;
+        }
+
+        /* 导航栏：滚动后毛玻璃态 */
+        #mainNav.scrolled {
+            background: rgba(8, 8, 8, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom-color: rgba(255, 255, 255, 0.06);
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        /* ========== 移动端适配 ========== */
+        @media (max-width: 768px) {
+            /* 导航栏 */
+            #mainNav {
+                padding: 1rem 1.25rem;
+            }
+            #mainNav.scrolled {
+                padding-top: 0.75rem;
+                padding-bottom: 0.75rem;
+            }
+            #mainNav .serif {
+                font-size: 1.25rem;
+            }
+            #mainNav .flex {
+                gap: 1.25rem;
+            }
+            #mainNav .nav-link {
+                font-size: 9px;
+                letter-spacing: 0.15em;
+            }
+
+            /* 首屏标题 */
+            #heroTitle {
+                font-size: 3rem !important;
+                line-height: 0.95;
+            }
+
+            /* 角色标签换行 */
+            .role-tags {
+                flex-wrap: wrap;
+                gap: 0.5rem 0.75rem;
+            }
+            .role-tags span {
+                font-size: 8px;
+                letter-spacing: 0.2em;
+            }
+
+            /* Section 间距 */
+            #portfolio, #about, #contact {
+                padding-top: 5rem;
+                padding-bottom: 5rem;
+            }
+
+            /* 作品网格 */
+            #portfolio .grid {
+                gap: 2rem;
+            }
+
+            /* 关于我 */
+            #about .grid.grid-cols-3 {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.75rem;
+            }
+            #about .grid.grid-cols-3 > div {
+                padding: 0.75rem;
+            }
+            #about .grid.grid-cols-3 .text-3xl {
+                font-size: 1.5rem;
+            }
+
+            /* 工具网格 */
+            #about .md\\:grid-cols-4 {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            #about .md\\:grid-cols-4 > div {
+                padding: 1rem;
+            }
+
+            /* 合作区 */
+            #contact .space-y-4 > div {
+                padding: 1rem;
+            }
+            #contact .border-l {
+                padding-left: 1.5rem;
+            }
+
+            /* 弹框适配 */
+            .gallery-header h2 {
+                font-size: 1.75rem !important;
+            }
+            .gallery-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.75rem !important;
+            }
+            .detail-modal {
+                border-radius: 1.5rem !important;
+                padding: 1.5rem !important;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            .detail-modal .grid {
+                grid-template-columns: 1fr !important;
+                gap: 1.5rem !important;
+            }
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        /* 弹框入场过渡 */
+        [x-transition] {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+    </style>
+</head>
+<body x-data="portfolio()">
+
+    <div class="gradient-canvas" id="gradientCanvas">
+        <div id="blob1" class="blob" style="background: #1e3a8a; top: -10%; left: -10%;"></div>
+        <div id="blob2" class="blob" style="background: #4c1d95; bottom: -10%; right: -10%;"></div>
+        <div id="blob3" class="blob" style="background: #0f172a; top: 30%; left: 40%;"></div>
+        <!-- 第四个：跟随鼠标的彩色光斑 -->
+        <div id="blob-cursor" class="blob" style="background: hsl(200,80%,40%); top: 40%; left: 40%; width: 30vw; height: 30vw; opacity: 0.7;"></div>
+    </div>
+    <div class="noise"></div>
+    <div class="glass-overlay"></div>
+    <div class="cursor-glow" id="cursorGlow"></div>
+
+    <nav id="mainNav" class="fixed w-full z-50 px-8 py-8 flex justify-between items-center">
+        <div class="text-2xl font-light tracking-tighter serif italic">IDEL.</div>
+        <div class="flex space-x-8 text-[11px] tracking-[0.3em] uppercase font-medium">
+            <a href="#portfolio" class="nav-link">作品</a>
+            <a href="#about" class="nav-link">关于我</a>
+            <a href="#contact" class="nav-link">合作</a>
+        </div>
+    </nav>
+
+    <section class="h-screen flex flex-col justify-center items-center relative text-center px-6">
+        <div id="hero-content" class="hero-interactive">
+            <h1 id="heroTitle" class="serif text-6xl md:text-[12rem] leading-[0.9] italic hero-text mb-8">
+                <span class="hero-line" data-line="0">Visual</span><br>
+                <span class="hero-line opacity-80" data-line="1">Alchemist</span>
+            </h1>
+            <div class="h-[1px] w-24 bg-white/30 mx-auto mb-8"></div>
+            <p class="text-xs md:text-sm tracking-[0.8em] uppercase text-white/60 font-light">
+                AI导演 · 视觉设计师 · 摄影师
+            </p>
+        </div>
+        <div class="absolute bottom-12 text-[10px] tracking-widest opacity-40 animate-pulse uppercase">
+            向下探索 / Scroll to Explore
+        </div>
+    </section>
+
+    <section id="portfolio" class="py-32 px-6 md:px-20 max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-10">
+            <template x-for="(cat, ci) in categories" :key="ci">
+                <div class="group cursor-pointer" @click="openCategoryGallery(ci)">
+                    <div class="relative aspect-[16/9] rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl">
+                        <img :src="cat.cover" class="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110">
+                        <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+                        <!-- 作品数量角标 -->
+                        <div class="absolute bottom-4 right-4 bg-black/60 backdrop-blur-sm text-white/80 text-[10px] tracking-widest uppercase px-4 py-2 rounded-full border border-white/10">
+                            <span x-text="cat.works.length"></span> 件作品
+                        </div>
+                    </div>
+                    <div class="mt-8 space-y-2">
+                        <p class="text-[10px] tracking-widest uppercase font-bold" :style="'color:' + cat.accentColor" x-text="cat.label"></p>
+                        <h3 class="text-3xl font-light" x-text="cat.title"></h3>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </section>
+
+    <!-- ========== 关于我 ========== -->
+    <section id="about" class="py-32 px-6 md:px-20 max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-24 items-center">
+            <!-- 左侧：人像 -->
+            <div class="relative">
+                <div class="aspect-[3/4] rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl">
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80" 
+                         class="w-full h-full object-cover" alt="IDEL">
+                </div>
+                <!-- 装饰光点 -->
+                <div class="absolute -top-4 -right-4 w-3 h-3 rounded-full bg-blue-400/60 animate-pulse"></div>
+                <div class="absolute -bottom-6 -left-6 w-2 h-2 rounded-full bg-purple-400/40 animate-pulse" style="animation-delay: 1s"></div>
+            </div>
+
+            <!-- 右侧：简介 -->
+            <div class="space-y-10">
+                <div>
+                    <p class="text-[10px] tracking-[0.5em] uppercase text-white/40 mb-4">About</p>
+                    <h2 class="text-4xl md:text-5xl font-light serif italic mb-4">
+                        用<span class="text-white/60">视觉</span>讲故事的人
+                    </h2>
+                    <div class="flex items-center gap-3 mb-8 role-tags">
+                        <span class="text-[10px] tracking-[0.4em] uppercase text-blue-400/70 font-medium">AI短剧导演</span>
+                        <span class="w-1 h-1 rounded-full bg-white/20"></span>
+                        <span class="text-[10px] tracking-[0.4em] uppercase text-white/30">视觉设计师</span>
+                        <span class="w-1 h-1 rounded-full bg-white/20"></span>
+                        <span class="text-[10px] tracking-[0.4em] uppercase text-white/30">摄影师</span>
+                    </div>
+                    <div class="space-y-5 text-white/60 text-sm leading-relaxed">
+                        <p>我是 IDEL，一名视觉导演与 AI 创作者。我相信影像不仅是记录，更是一种叙事方式——每一帧都是一个未完成的句子，等待观众补完。</p>
+                        <p>从摄影到 AI 短剧，我的工作始终围绕一个核心：<strong class="text-white/80">在技术与情感之间找到共振点</strong>。工具在变，但讲故事的冲动从未改变。</p>
+                    </div>
+                </div>
+
+                <!-- 数据 -->
+                <div class="grid grid-cols-3 gap-6" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="p-5 bg-white/5 rounded-2xl border border-white/5 text-center">
+                        <div class="text-3xl font-light serif italic text-white/90">7<span class="text-blue-400">+</span></div>
+                        <div class="text-[10px] tracking-widest uppercase text-white/30 mt-2">年创作</div>
+                    </div>
+                    <div class="p-5 bg-white/5 rounded-2xl border border-white/5 text-center">
+                        <div class="text-3xl font-light serif italic text-white/90">50<span class="text-purple-400">+</span></div>
+                        <div class="text-[10px] tracking-widest uppercase text-white/30 mt-2">项目</div>
+                    </div>
+                    <div class="p-5 bg-white/5 rounded-2xl border border-white/5 text-center">
+                        <div class="text-3xl font-light serif italic text-white/90">12</div>
+                        <div class="text-[10px] tracking-widest uppercase text-white/30 mt-2">品牌合作</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 工具与技能 -->
+        <div class="mt-32">
+            <p class="text-[10px] tracking-[0.5em] uppercase text-white/40 mb-8">Tools & Skills</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="group p-6 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-white/15 transition-all duration-500">
+                    <div class="text-2xl mb-3">🎬</div>
+                    <div class="text-sm font-light text-white/80 mb-1">AI 视频生成</div>
+                    <div class="text-[10px] text-white/30">Sora · Runway · Kling</div>
+                </div>
+                <div class="group p-6 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-white/15 transition-all duration-500">
+                    <div class="text-2xl mb-3">📷</div>
+                    <div class="text-sm font-light text-white/80 mb-1">摄影与后期</div>
+                    <div class="text-[10px] text-white/30">Lightroom · Capture One</div>
+                </div>
+                <div class="group p-6 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-white/15 transition-all duration-500">
+                    <div class="text-2xl mb-3">🎨</div>
+                    <div class="text-sm font-light text-white/80 mb-1">视觉设计</div>
+                    <div class="text-[10px] text-white/30">Figma · After Effects</div>
+                </div>
+                <div class="group p-6 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-white/15 transition-all duration-500">
+                    <div class="text-2xl mb-3">✍️</div>
+                    <div class="text-sm font-light text-white/80 mb-1">脚本与叙事</div>
+                    <div class="text-[10px] text-white/30">创意脚本 · 分镜设计</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 创作理念 -->
+        <div class="mt-24 relative">
+            <div class="p-10 md:p-16 bg-white/[0.02] rounded-[2rem] border border-white/5 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[80px]"></div>
+                <p class="text-[10px] tracking-[0.5em] uppercase text-white/40 mb-6">Philosophy</p>
+                <blockquote class="text-2xl md:text-3xl font-light serif italic text-white/70 leading-relaxed relative z-10">
+                    "技术是笔，情感是墨。<br>
+                    <span class="text-white/40">我只是那个确保它们落在同一张纸上的人。</span>"
+                </blockquote>
+                <div class="mt-6 text-[10px] tracking-widest uppercase text-white/20">— IDEL</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== 合作 ========== -->
+    <section id="contact" class="py-32 px-6 md:px-20 max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-24">
+            <!-- 左侧：CTA -->
+            <div class="flex flex-col justify-center">
+                <p class="text-[10px] tracking-[0.5em] uppercase text-white/40 mb-4">Contact</p>
+                <h2 class="text-4xl md:text-6xl font-light serif italic mb-8 leading-tight">
+                    一起做点<br>
+                    <span class="text-white/50">有意思的事</span>
+                </h2>
+                <p class="text-white/50 text-sm leading-relaxed mb-10 max-w-md">
+                    无论是品牌合作、AI 短剧创作、还是纯粹想聊聊视觉——我的收件箱永远为有趣的念头敞开。
+                </p>
+
+                <!-- 联系方式 -->
+                <div class="space-y-5">
+                    <a href="mailto:work@idel.com" class="group flex items-center gap-4 p-5 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all duration-500">
+                        <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-lg group-hover:bg-blue-500/10 transition-colors">✉</div>
+                        <div>
+                            <div class="text-[10px] tracking-widest uppercase text-white/30 mb-1">Email</div>
+                            <div class="text-sm text-white/80 group-hover:text-blue-400 transition-colors">work@idel.com</div>
+                        </div>
+                    </a>
+                    <a href="#" class="group flex items-center gap-4 p-5 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all duration-500">
+                        <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-lg group-hover:bg-purple-500/10 transition-colors">𝕏</div>
+                        <div>
+                            <div class="text-[10px] tracking-widest uppercase text-white/30 mb-1">Twitter / X</div>
+                            <div class="text-sm text-white/80 group-hover:text-purple-400 transition-colors">@idel_visual</div>
+                        </div>
+                    </a>
+                    <a href="#" class="group flex items-center gap-4 p-5 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-pink-500/30 hover:bg-pink-500/5 transition-all duration-500">
+                        <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-lg group-hover:bg-pink-500/10 transition-colors">📷</div>
+                        <div>
+                            <div class="text-[10px] tracking-widest uppercase text-white/30 mb-1">Instagram</div>
+                            <div class="text-sm text-white/80 group-hover:text-pink-400 transition-colors">@idel.visual</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 右侧：服务 & 流程 -->
+            <div class="space-y-12">
+                <!-- 服务 -->
+                <div>
+                    <p class="text-[10px] tracking-[0.5em] uppercase text-white/40 mb-6">Services</p>
+                    <div class="space-y-4">
+                        <div class="p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-lg font-light">AI 短剧 / 视频</h3>
+                                <span class="text-[10px] tracking-widest uppercase text-blue-400/60">核心</span>
+                            </div>
+                            <p class="text-xs text-white/40 leading-relaxed">从脚本到成片的全流程 AI 视频创作，包含创意策划、分镜设计、AI 生成与后期合成。</p>
+                        </div>
+                        <div class="p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-lg font-light">视觉指导</h3>
+                                <span class="text-[10px] tracking-widest uppercase text-purple-400/60">方向</span>
+                            </div>
+                            <p class="text-xs text-white/40 leading-relaxed">品牌视觉体系搭建、影像风格定义、创意方向把控。让视觉成为品牌的第二语言。</p>
+                        </div>
+                        <div class="p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-lg font-light">摄影与后期</h3>
+                                <span class="text-[10px] tracking-widest uppercase text-white/20">定制</span>
+                            </div>
+                            <p class="text-xs text-white/40 leading-relaxed">人像、产品、空间摄影。冷调美学，注重光影与留白的对话。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 流程 -->
+                <div>
+                    <p class="text-[10px] tracking-[0.5em] uppercase text-white/40 mb-6">Process</p>
+                    <div class="relative pl-8 space-y-8 border-l border-white/10">
+                        <div class="relative">
+                            <div class="absolute -left-8 top-1 w-3 h-3 rounded-full bg-blue-500/60 border-2 border-black"></div>
+                            <div class="text-[10px] tracking-widest uppercase text-blue-400/60 mb-1">01</div>
+                            <div class="text-sm text-white/80 mb-1">沟通需求</div>
+                            <div class="text-xs text-white/30">了解你的故事、风格偏好与交付目标</div>
+                        </div>
+                        <div class="relative">
+                            <div class="absolute -left-8 top-1 w-3 h-3 rounded-full bg-purple-500/60 border-2 border-black"></div>
+                            <div class="text-[10px] tracking-widest uppercase text-purple-400/60 mb-1">02</div>
+                            <div class="text-sm text-white/80 mb-1">创意方案</div>
+                            <div class="text-xs text-white/30">脚本、分镜、视觉参考——确认方向后再动手</div>
+                        </div>
+                        <div class="relative">
+                            <div class="absolute -left-8 top-1 w-3 h-3 rounded-full bg-white/40 border-2 border-black"></div>
+                            <div class="text-[10px] tracking-widest uppercase text-white/30 mb-1">03</div>
+                            <div class="text-sm text-white/80 mb-1">制作交付</div>
+                            <div class="text-xs text-white/30">AI 生成 + 后期打磨，迭代至满意为止</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部 CTA -->
+        <div class="mt-32 text-center">
+            <div class="h-[1px] w-full bg-white/5 mb-16"></div>
+            <p class="text-[10px] tracking-[0.5em] uppercase text-white/20 mb-6">Ready to start?</p>
+            <a href="mailto:work@idel.com" class="inline-flex items-center justify-center h-16 px-12 bg-white text-black rounded-full text-xs font-bold uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all duration-500 shadow-[0_0_40px_rgba(59,130,246,0.15)] hover:shadow-[0_0_60px_rgba(59,130,246,0.3)]">
+                开始合作
+            </a>
+            <div class="mt-16 text-[10px] text-white/15 tracking-widest">
+                © 2026 IDEL — Visual Alchemist
+            </div>
+        </div>
+    </section>
+
+    <!-- 占位（移除原来的空 section） -->
+
+    <!-- ========== 第一层：分区作品画廊 ========== -->
+    <template x-if="galleryOpen">
+        <div class="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto" x-transition>
+            <div class="absolute inset-0 bg-black/85 backdrop-blur-3xl" @click="closeGallery()"></div>
+            <div class="relative w-full max-w-6xl py-20 px-6 z-10">
+                <!-- 头部 -->
+                <div class="flex items-center justify-between mb-12">
+                    <div>
+                        <p class="text-[10px] tracking-widest uppercase font-bold mb-2" 
+                           :style="'color:' + currentCategory.accentColor" 
+                           x-text="currentCategory.label"></p>
+                        <h2 class="text-4xl md:text-5xl font-light serif italic gallery-header" x-text="currentCategory.title"></h2>
+                    </div>
+                    <button @click="closeGallery()" 
+                            class="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+                        ✕
+                    </button>
+                </div>
+                <!-- 作品网格 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 gallery-grid">
+                    <template x-for="(work, wi) in currentCategory.works" :key="wi">
+                        <div class="group cursor-pointer" @click="openWorkDetail(wi)">
+                            <div class="relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/10 shadow-xl">
+                                <img :src="work.thumb" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                                <div class="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-colors"></div>
+                                <!-- 播放图标（视频类） -->
+                                <div x-show="work.video" class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div class="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+                                        <div class="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-white border-b-[8px] border-b-transparent ml-1"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 space-y-1">
+                                <h3 class="text-lg font-light" x-text="work.title"></h3>
+                                <p class="text-[10px] tracking-widest uppercase text-white/40" x-text="work.type"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- ========== 第二层：作品详情弹框 ========== -->
+    <template x-if="detailOpen">
+        <div class="fixed inset-0 z-[110] flex items-center justify-center p-4" x-transition>
+            <div class="absolute inset-0 bg-black/90 backdrop-blur-3xl" @click="closeDetail()"></div>
+            <div class="relative w-full max-w-5xl bg-white/5 border border-white/10 rounded-[3rem] p-8 md:p-12 overflow-hidden shadow-2xl z-10 detail-modal">
+                <!-- 返回 + 关闭 -->
+                <div class="absolute top-6 left-8 right-8 flex justify-between items-center z-20">
+                    <button @click="closeDetail()" 
+                            class="text-[10px] tracking-widest uppercase text-white/40 hover:text-white transition-colors flex items-center gap-2">
+                        ← 返回画廊
+                    </button>
+                    <button @click="closeDetail()" 
+                            class="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60 hover:text-white text-sm">
+                        ✕
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mt-8">
+                    <!-- 左侧：作品预览 -->
+                    <div class="rounded-2xl overflow-hidden bg-black cursor-pointer relative group" 
+                         @click="openLightbox()">
+                        <template x-if="currentWork.video">
+                            <video :src="currentWork.video" controls autoplay class="w-full"></video>
+                        </template>
+                        <template x-if="currentWork.img">
+                            <img :src="currentWork.img" class="w-full">
+                        </template>
+                        <!-- 放大提示 -->
+                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                            <div class="px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm text-[10px] tracking-widest uppercase border border-white/20">
+                                点击放大查看
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 右侧：信息 -->
+                    <div class="flex flex-col justify-center">
+                        <p class="text-[10px] tracking-widest uppercase font-bold mb-3" 
+                           :style="'color:' + currentCategory.accentColor" 
+                           x-text="currentWork.type"></p>
+                        <h2 class="text-4xl font-bold mb-4 serif italic" x-text="currentWork.title"></h2>
+                        <div class="p-6 bg-white/5 rounded-2xl mb-8 border border-white/5">
+                            <p class="text-xs uppercase tracking-widest text-white/40 mb-2">创意脚本内容</p>
+                            <p class="text-sm text-white/80 leading-relaxed italic" x-text="currentWork.script"></p>
+                        </div>
+                        <template x-if="currentWork.hasDownload">
+                            <a :href="currentWork.download" download class="inline-flex items-center justify-center h-14 px-8 bg-white text-black rounded-full text-xs font-bold uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all">
+                                ⬇ 下载作品（含版权保护）
+                            </a>
+                        </template>
+                        <template x-if="!currentWork.hasDownload">
+                            <div class="inline-flex items-center justify-center h-14 px-8 bg-white/10 text-white/40 rounded-full text-xs font-medium tracking-widest cursor-not-allowed">
+                                暂无可下载文件
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- ========== 第三层：全屏灯箱 ========== -->
+    <template x-if="lightboxOpen">
+        <div class="fixed inset-0 z-[120] flex items-center justify-center bg-black/95" x-transition>
+            <button @click="closeLightbox()" 
+                    class="absolute top-6 right-6 z-20 w-12 h-12 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+                ✕
+            </button>
+            <div class="max-w-[90vw] max-h-[90vh] cursor-pointer" @click="closeLightbox()">
+                <template x-if="currentWork.video">
+                    <video :src="currentWork.video" controls autoplay class="max-w-full max-h-[90vh] rounded-lg"></video>
+                </template>
+                <template x-if="currentWork.img">
+                    <img :src="currentWork.img" class="max-w-full max-h-[90vh] object-contain rounded-lg">
+                </template>
+            </div>
+        </div>
+    </template>
+
+    <script>
+    // ==================== Alpine.js 数据层 ====================
+    function portfolio() {
+        return {
+            // 分区数据 — 从 API 加载
+            categories: [],
+            loading: true,
+
+            // 状态
+            galleryOpen: false,
+            detailOpen: false,
+            lightboxOpen: false,
+            currentCategoryIndex: 0,
+            currentWorkIndex: 0,
+
+            // 初始化：从 data.json 加载数据（兼容 file:// 协议和 GitHub Pages）
+            async init() {
+                const mapData = (data) => data.map(cat => ({
+                    title: cat.title,
+                    label: cat.label,
+                    accentColor: cat.accent_color,
+                    cover: cat.cover,
+                    works: (cat.works || []).map(w => ({
+                        id: w.id,
+                        title: w.title,
+                        type: w.type,
+                        thumb: w.thumb,
+                        img: w.img,
+                        video: w.video || '',
+                        script: w.script,
+                        download: w.hasDownload ? (w.download || '#') : '#',
+                        hasDownload: w.hasDownload
+                    }))
+                }));
+
+                // 方式1：从 data.json 加载（GitHub Pages / HTTP 服务）
+                try {
+                    const res = await fetch('data.json');
+                    if (res.ok) {
+                        this.categories = mapData(await res.json());
+                        this.loading = false;
+                        return;
+                    }
+                } catch (e) { /* file:// 协议会失败，继续尝试 */ }
+
+                // 方式2：从 API 加载（本地 Node.js 服务）
+                try {
+                    const res = await fetch('/api/categories');
+                    if (res.ok) {
+                        this.categories = mapData(await res.json());
+                        this.loading = false;
+                        return;
+                    }
+                } catch (e) { /* 无后端时跳过 */ }
+
+                // 方式3：内置示例数据（file:// 协议兜底）
+                this.categories = mapData([
+                    {"title":"AI 短剧","label":"AI SHORT FILM","accent_color":"#3b82f6","cover":"https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80","works":[{"id":1,"title":"《迷雾之城》","type":"AI 短片","thumb":"https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80","img":"https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80","video":"","script":"在一座永远被迷雾笼罩的城市里，一个孤独的信使穿梭于高楼之间。","hasDownload":false},{"id":2,"title":"《最后一帧》","type":"AI 视频","thumb":"https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80","img":"https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80","video":"","script":"一位老摄影师在暗房里冲洗最后一卷胶卷。每一张照片都是一段被遗忘的记忆。","hasDownload":false}]},
+                    {"title":"视觉设计","label":"VISUAL DESIGN","accent_color":"#a855f7","cover":"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?auto=format&fit=crop&q=80","works":[{"id":3,"title":"品牌视觉系统","type":"品牌设计","thumb":"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?auto=format&fit=crop&q=80","img":"https://images.unsplash.com/photo-1558618666-fcd25c85f82e?auto=format&fit=crop&q=80","video":"","script":"为一家科技初创公司设计的完整品牌视觉系统。","hasDownload":false}]},
+                    {"title":"摄影作品","label":"PHOTOGRAPHY","accent_color":"#ec4899","cover":"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80","works":[{"id":5,"title":"《城市呼吸》","type":"纪实摄影","thumb":"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80","img":"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80","video":"","script":"凌晨四点的城市，霓虹灯与晨光交织。","hasDownload":false}]}
+                ]);
+                this.loading = false;
+            },
+
+            // 计算属性
+            get currentCategory() {
+                return this.categories[this.currentCategoryIndex] || this.categories[0] || { works: [], title: '', label: '', accentColor: '#60a5fa' };
+            },
+            get currentWork() {
+                return this.currentCategory.works[this.currentWorkIndex] || {};
+            },
+
+            // 操作
+            openCategoryGallery(index) {
+                this.currentCategoryIndex = index;
+                this.galleryOpen = true;
+                document.body.style.overflow = 'hidden';
+            },
+            closeGallery() {
+                this.galleryOpen = false;
+                document.body.style.overflow = '';
+            },
+            openWorkDetail(workIndex) {
+                this.currentWorkIndex = workIndex;
+                this.detailOpen = true;
+            },
+            closeDetail() {
+                this.detailOpen = false;
+            },
+            openLightbox() {
+                this.lightboxOpen = true;
+            },
+            closeLightbox() {
+                this.lightboxOpen = false;
+            }
+        };
+    }
+    </script>
+    <script>
+    (function() {
+        // ==================== 配置 ====================
+        const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+        const BLOB_COUNT = 3;
+        const BASE_COLORS = [
+            { h: 220, s: 80, l: 32 },  // 深蓝，更饱和
+            { h: 270, s: 75, l: 25 },  // 紫，更饱和
+            { h: 210, s: 50, l: 15 }   // 近黑蓝
+        ];
+        const MAGNET_RADIUS = 250;
+        const MAGNET_STRENGTH = 0.08;
+
+        // ==================== 全局状态 ====================
+        const mouse = { x: 0.5, y: 0.5, vx: 0, vy: 0, speed: 0, px: 0.5, py: 0.5 };
+        const scroll = { y: 0, max: 1 };
+        let gyroAvailable = false;
+        const gyro = { x: 0, y: 0 };
+        let heroReady = false;  // hero 字符拆分完成标记
+
+        // ==================== Blob 状态 ====================
+        const blobs = isMobile ? [] : Array.from({ length: BLOB_COUNT }, (_, i) => ({
+            el: document.getElementById('blob' + (i + 1)),
+            x: 0, y: 0,
+            tx: 0, ty: 0,
+            scale: 1,
+            targetScale: 1,
+            color: { ...BASE_COLORS[i] },
+            targetColor: { ...BASE_COLORS[i] },
+            responsiveness: 0.02 + i * 0.008,
+            scaleResponsiveness: 0.03 + i * 0.01
+        }));
+
+        // 第四个：跟随鼠标的彩色光斑
+        const cursorBlob = isMobile ? null : document.getElementById('blob-cursor');
+        const cursorBlobState = {
+            x: window.innerWidth * 0.4,
+            y: window.innerHeight * 0.4,
+            hue: 200
+        };
+
+        // ==================== 光标光晕 ====================
+        const cursorGlow = document.getElementById('cursorGlow');
+        let glowX = window.innerWidth / 2;
+        let glowY = window.innerHeight / 2;
+
+        // ==================== 鼠标跟踪 ====================
+        document.addEventListener('mousemove', (e) => {
+            mouse.px = mouse.x;
+            mouse.py = mouse.y;
+            mouse.x = e.clientX / window.innerWidth;
+            mouse.y = e.clientY / window.innerHeight;
+            mouse.vx = mouse.x - mouse.px;
+            mouse.vy = mouse.y - mouse.py;
+            mouse.speed = Math.sqrt(mouse.vx * mouse.vx + mouse.vy * mouse.vy);
+            glowX = e.clientX;
+            glowY = e.clientY;
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (isMobile) return;  // Skip mouse tracking on mobile
+            const t = e.touches[0];
+            mouse.px = mouse.x;
+            mouse.py = mouse.y;
+            mouse.x = t.clientX / window.innerWidth;
+            mouse.y = t.clientY / window.innerHeight;
+            mouse.vx = mouse.x - mouse.px;
+            mouse.vy = mouse.y - mouse.py;
+            mouse.speed = Math.sqrt(mouse.vx * mouse.vx + mouse.vy * mouse.vy);
+            glowX = t.clientX;
+            glowY = t.clientY;
+        }, { passive: true });
+
+        // ==================== 陀螺仪 ====================
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', (e) => {
+                if (e.gamma !== null && e.beta !== null) {
+                    gyroAvailable = true;
+                    gyro.x = (e.gamma / 90 + 1) / 2;
+                    gyro.y = (e.beta / 180 + 1) / 2;
+                }
+            });
+        }
+
+        // ==================== 滚动跟踪 ====================
+        const mainNav = document.getElementById('mainNav');
+        window.addEventListener('scroll', () => {
+            scroll.y = window.scrollY;
+            scroll.max = document.documentElement.scrollHeight - window.innerHeight;
+            // 导航栏：滚过首屏后切换毛玻璃态
+            mainNav.classList.toggle('scrolled', scroll.y > window.innerHeight * 0.8);
+        }, { passive: true });
+
+        // ==================== 点击脉冲 ====================
+        document.addEventListener('click', (e) => {
+            if (isMobile) return;
+            createPulse(e.clientX, e.clientY);
+            blobs.forEach(b => {
+                b.tx += (mouse.x - 0.5) * -160;
+                b.ty += (mouse.y - 0.5) * -160;
+                b.targetScale = 1.4;
+            });
+        });
+
+        document.addEventListener('touchstart', (e) => {
+            if (isMobile) return;
+            const t = e.touches[0];
+            createPulse(t.clientX, t.clientY);
+            blobs.forEach(b => {
+                b.tx += (mouse.x - 0.5) * -120;
+                b.ty += (mouse.y - 0.5) * -120;
+                b.targetScale = 1.3;
+            });
+        }, { passive: true });
+
+        function createPulse(cx, cy) {
+            const ring = document.createElement('div');
+            ring.className = 'pulse-ring';
+            ring.style.cssText = `left:${cx}px;top:${cy}px;width:10px;height:10px;opacity:1;`;
+            document.body.appendChild(ring);
+            gsap.to(ring, {
+                width: 600, height: 600,
+                left: cx - 300, top: cy - 300,
+                opacity: 0, duration: 1.2, ease: 'power2.out',
+                onComplete: () => ring.remove()
+            });
+        }
+
+        // ==================== 颜色插值 ====================
+        function lerpColor(c1, c2, t) {
+            let dh = c2.h - c1.h;
+            if (dh > 180) dh -= 360;
+            if (dh < -180) dh += 360;
+
+            // 色相差 > 60 时，插入中间色相让过渡更平滑
+            const absDH = Math.abs(dh);
+            if (absDH > 60) {
+                const midH = (c1.h + dh * 0.5 + 360) % 360;
+                const midS = (c1.s + c2.s) / 2;
+                const midL = (c1.l + c2.l) / 2;
+                if (t < 0.5) {
+                    // 前半段：c1 → 中间色
+                    const t2 = t * 2;
+                    return {
+                        h: (c1.h + (midH - c1.h + (midH - c1.h > 180 ? -360 : midH - c1.h < -180 ? 360 : 0)) * t2 + 360) % 360,
+                        s: c1.s + (midS - c1.s) * t2,
+                        l: c1.l + (midL - c1.l) * t2
+                    };
+                } else {
+                    // 后半段：中间色 → c2
+                    const t2 = (t - 0.5) * 2;
+                    let dh2 = c2.h - midH;
+                    if (dh2 > 180) dh2 -= 360;
+                    if (dh2 < -180) dh2 += 360;
+                    return {
+                        h: (midH + dh2 * t2 + 360) % 360,
+                        s: midS + (c2.s - midS) * t2,
+                        l: midL + (c2.l - midL) * t2
+                    };
+                }
+            }
+
+            return {
+                h: (c1.h + dh * t + 360) % 360,
+                s: c1.s + (c2.s - c1.s) * t,
+                l: c1.l + (c2.l - c1.l) * t
+            };
+        }
+
+        // ==================== Blob 目标计算 ====================
+        function computeBlobTargets() {
+            const scrollRatio = scroll.max > 0 ? scroll.y / scroll.max : 0;
+            const inputX = gyroAvailable ? gyro.x : mouse.x;
+            const inputY = gyroAvailable ? gyro.y : mouse.y;
+            const now = Date.now() * 0.001; // Cache timestamp once per frame
+            const hueShift = scrollRatio * 120;
+
+            blobs.forEach((b, i) => {
+                const parallax = 1 + i * 0.5;
+                const stretchX = mouse.vx * 800 * (1 + i * 0.3);
+                const stretchY = mouse.vy * 600 * (1 + i * 0.3);
+
+                b.tx = (inputX - 0.5) * 80 * parallax + stretchX;
+                b.ty = (inputY - 0.5) * 60 * parallax + stretchY;
+
+                const breath = Math.sin(now + i * 2) * 0.08;
+                const speedPulse = Math.min(mouse.speed * 40, 0.5);
+                b.targetScale = 1 + breath + speedPulse;
+
+                const baseColor = BASE_COLORS[i];
+                b.targetColor = {
+                    h: (baseColor.h + hueShift + mouse.x * 45) % 360,
+                    s: baseColor.s + mouse.speed * 100,
+                    l: baseColor.l + (inputY - 0.5) * 15
+                };
+            });
+        }
+
+        // ==================== Hero 字符拆分 ====================
+        const heroTitle = document.getElementById('heroTitle');
+        const heroChars = [];
+
+        document.querySelectorAll('.hero-line').forEach(line => {
+            const text = line.textContent;
+            line.textContent = '';
+            for (const ch of text) {
+                const span = document.createElement('span');
+                span.className = 'hero-char' + (ch === ' ' ? ' space' : '');
+                span.textContent = ch;
+                line.appendChild(span);
+                heroChars.push({
+                    el: span,
+                    x: 0, y: 0,
+                    tx: 0, ty: 0,
+                    opacity: 0,
+                    targetOpacity: 0,
+                    glow: 0,
+                    entered: false,
+                    baseX: 0, baseY: 0
+                });
+            }
+        });
+
+        // 逐字入场：从随机位置飘入
+        heroChars.forEach((c, i) => {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 80 + Math.random() * 150;
+            c.x = Math.cos(angle) * dist;
+            c.y = Math.sin(angle) * dist;
+
+            setTimeout(() => {
+                c.targetOpacity = 1;
+                c.tx = 0;
+                c.ty = 0;
+                c.entered = true;
+            }, 600 + i * 50);
+        });
+
+        // 入场完成后：用 getBoundingClientRect 缓存一次初始位置，之后不再每帧取
+        // 给足 1.2s 让字符归位到稳定位置再缓存
+        const heroDelay = isMobile ? 800 : (600 + heroChars.length * 50 + 1200);
+        setTimeout(() => {
+            heroChars.forEach(c => {
+                const rect = c.el.getBoundingClientRect();
+                c.baseX = rect.left + rect.width / 2;
+                c.baseY = rect.top + rect.height / 2;
+            });
+            heroReady = true;
+            initScrollAnimations();
+        }, heroDelay);
+
+        // ==================== Hero 交互计算 ====================
+        function computeHeroTargets() {
+            if (!heroReady || heroChars.length === 0) return;
+
+            const scrollRatio = scroll.max > 0 ? scroll.y / scroll.max : 0;
+            const mx = mouse.x * window.innerWidth;
+            const my = mouse.y * window.innerHeight;
+
+            // 整体 3D 透视倾斜
+            const tiltX = (mouse.y - 0.5) * 12;
+            const tiltY = (mouse.x - 0.5) * -15;
+            heroTitle.style.transform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+
+            // 滚动消散
+            const scrollFade = Math.max(0, 1 - scrollRatio * 3);
+            const spreadForce = scrollRatio * 60;
+
+            heroChars.forEach((c, i) => {
+                if (!c.entered) return;
+
+                // 用缓存的原始布局位置，不受 transform 影响 → 无反馈循环
+                const cx = c.baseX;
+                const cy = c.baseY;
+
+                const dx = mx - cx;
+                const dy = my - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // 磁力吸附
+                if (dist < MAGNET_RADIUS) {
+                    const force = 1 - dist / MAGNET_RADIUS;
+                    const eased = force * force * force;
+                    c.tx = dx * eased * MAGNET_STRENGTH;
+                    c.ty = dy * eased * MAGNET_STRENGTH;
+                    c.glow = eased;
+                } else {
+                    c.tx *= 0.92;
+                    c.ty *= 0.92;
+                    c.glow *= 0.9;
+                }
+
+                // 滚动散开
+                if (scrollRatio > 0.05) {
+                    const angle = (i / heroChars.length) * Math.PI * 2;
+                    c.tx += Math.cos(angle) * spreadForce * (1 + i % 3);
+                    c.ty += Math.sin(angle) * spreadForce * 0.6;
+                    c.targetOpacity = scrollFade;
+                } else {
+                    c.targetOpacity = 1;
+                }
+            });
+        }
+
+        // ==================== Hero 动画应用 ====================
+        function applyHeroAnimation() {
+            heroChars.forEach(c => {
+                const dx = c.tx - c.x;
+                const dy = c.ty - c.y;
+                const dOp = c.targetOpacity - c.opacity;
+
+                // Skip DOM write if delta is negligible
+                if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01 && Math.abs(dOp) < 0.005) return;
+
+                c.x += dx * 0.1;
+                c.y += dy * 0.1;
+                c.opacity += dOp * 0.08;
+
+                c.el.style.transform = `translate(${c.x}px, ${c.y}px)`;
+                c.el.style.opacity = c.opacity;
+                c.el.classList.toggle('glowing', c.glow > 0.3);
+            });
+        }
+
+        // ==================== 主动画循环（性能优化版）====================
+        let frameCount = 0;
+
+        function animate() {
+            frameCount++;
+
+            // --- Blob 目标计算 ---
+            if (!isMobile) computeBlobTargets();
+
+            // --- Hero 计算（仅在可见区域内执行）---
+            if (heroReady) {
+                const scrollPastHero = scroll.max > 0 && scroll.y / scroll.max > 0.15;
+                if (!scrollPastHero) {
+                    computeHeroTargets();
+                }
+            }
+
+            // --- 鼠标速度衰减 ---
+            if (!isMobile) {
+                mouse.vx *= 0.92;
+                mouse.vy *= 0.92;
+                mouse.speed *= 0.92;
+            }
+
+            // --- Blob 动画应用（分帧颜色插值）---
+            const doColor = frameCount % 3 === 0;
+            if (!isMobile) blobs.forEach(b => {
+                b.x += (b.tx - b.x) * b.responsiveness;
+                b.y += (b.ty - b.y) * b.responsiveness;
+                b.scale += (b.targetScale - b.scale) * b.scaleResponsiveness;
+                if (doColor) {
+                    b.color = lerpColor(b.color, b.targetColor, 0.05);
+                }
+                b.el.style.transform = `translate(${b.x}px,${b.y}px) scale(${b.scale})`;
+                b.el.style.background = `hsla(${b.color.h},${b.color.s}%,${b.color.l}%,0.7)`;
+            });
+
+            // --- 第四个 blob：跟随鼠标 ---
+            if (!isMobile) {
+            const targetCx = mouse.x * window.innerWidth;
+            const targetCy = mouse.y * window.innerHeight;
+            cursorBlobState.x += (targetCx - cursorBlobState.x) * 0.04;
+            cursorBlobState.y += (targetCy - cursorBlobState.y) * 0.04;
+            if (doColor) {
+                cursorBlobState.hue = mouse.x * 120 + 200;
+            }
+            const cbSat = 60 + mouse.speed * 80;
+            const cbLight = 30 + mouse.speed * 50;
+            cursorBlob.style.background = `hsl(${cursorBlobState.hue}, ${Math.min(cbSat, 95)}%, ${Math.min(cbLight, 55)}%)`;
+            cursorBlob.style.transform = `translate(${cursorBlobState.x - window.innerWidth * 0.15}px, ${cursorBlobState.y - window.innerHeight * 0.15}px)`;
+
+            }  // end cursor blob
+            // --- 光标光晕 ---
+            if (!isMobile) {
+                cursorGlow.style.left = glowX + 'px';
+                cursorGlow.style.top = glowY + 'px';
+                if (doColor) {
+                    const glowHue = Math.floor(mouse.x * 120 + 200);
+                    const glowSat = 50 + mouse.speed * 200;
+                    cursorGlow.style.background = `radial-gradient(circle, hsla(${glowHue},${Math.min(glowSat,100)}%,50%,0.12) 0%, transparent 70%)`;
+                }
+            }
+
+            // --- Hero 文字 ---
+            applyHeroAnimation();
+
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+
+        window.addEventListener('resize', () => {
+            // 窗口大小变化时重新缓存字符位置
+            if (heroReady) {
+                heroChars.forEach(c => {
+                    const rect = c.el.getBoundingClientRect();
+                    c.baseX = rect.left + rect.width / 2;
+                    c.baseY = rect.top + rect.height / 2;
+                });
+            }
+        });
+
+        // ==================== 滚动视差 ====================
+        function initScrollAnimations() {
+            if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+            gsap.registerPlugin(ScrollTrigger);
+            ScrollTrigger.config({ limitCallbacks: true });
+
+            const staggerDelay = isMobile ? 0.05 : 0.15;
+            const animDuration = isMobile ? 0.5 : 1;
+            const ioDelay = isMobile ? 0 : 60;  // Mobile: no stagger delay
+
+            // 作品卡片
+            gsap.utils.toArray('#portfolio .group').forEach((el, i) => {
+                gsap.from(el, {
+                    y: isMobile ? 30 : 60, opacity: 0, duration: animDuration, delay: i * staggerDelay,
+                    scrollTrigger: { trigger: el, start: 'top 90%', toggleActions: 'play none none none' }
+                });
+            });
+
+            // 关于我 — 人像和文字分列入场
+            gsap.from('#about .grid > div:first-child', {
+                x: isMobile ? 0 : -60, y: isMobile ? 30 : 0, opacity: 0, duration: isMobile ? 0.6 : 1.2, ease: 'power3.out',
+                scrollTrigger: { trigger: '#about', start: 'top 80%' }
+            });
+            gsap.from('#about .grid > div:last-child', {
+                x: isMobile ? 0 : 60, y: isMobile ? 30 : 0, opacity: 0, duration: isMobile ? 0.6 : 1.2, ease: 'power3.out', delay: isMobile ? 0 : 0.2,
+                scrollTrigger: { trigger: '#about', start: 'top 80%' }
+            });
+
+            // 数据卡片 — IntersectionObserver，移动端无延迟
+            const statCards = document.querySelectorAll('#about .grid.grid-cols-3 > div');
+            const statObserver = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        const idx = Array.from(statCards).indexOf(entry.target);
+                        setTimeout(() => {
+                            entry.target.style.opacity = '1';
+                            entry.target.style.transform = 'translateY(0)';
+                        }, idx * ioDelay);
+                        statObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.05 });
+            statCards.forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(30px)';
+                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                statObserver.observe(card);
+            });
+
+            // 工具卡片 — IntersectionObserver，移动端无延迟
+            const toolCards = document.querySelectorAll('#about .mt-32 .grid > div');
+            const toolObserver = new IntersectionObserver((entries) => {
+                entries.forEach((entry, i) => {
+                    if (entry.isIntersecting) {
+                        setTimeout(() => {
+                            entry.target.style.opacity = '1';
+                            entry.target.style.transform = 'translateY(0)';
+                        }, i * ioDelay);
+                        toolObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.05 });
+            toolCards.forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                toolObserver.observe(card);
+            });
+
+            // 理念引用
+            gsap.from('#about blockquote', {
+                y: isMobile ? 20 : 40, opacity: 0, duration: isMobile ? 0.5 : 1,
+                scrollTrigger: { trigger: '#about blockquote', start: 'top 85%' }
+            });
+
+            // 合作 — CTA 侧入场
+            gsap.from('#contact .grid > div:first-child', {
+                x: isMobile ? 0 : -50, y: isMobile ? 20 : 0, opacity: 0, duration: isMobile ? 0.5 : 1, ease: 'power3.out',
+                scrollTrigger: { trigger: '#contact', start: 'top 80%' }
+            });
+
+            // 合作 — 服务卡片
+            gsap.utils.toArray('#contact .space-y-4 > div').forEach((el, i) => {
+                gsap.from(el, {
+                    x: isMobile ? 0 : 40, y: isMobile ? 15 : 0, opacity: 0, duration: isMobile ? 0.4 : 0.8, delay: i * (isMobile ? 0.05 : 0.15),
+                    scrollTrigger: { trigger: '#contact .space-y-4', start: 'top 85%' }
+                });
+            });
+
+            // 流程时间线
+            gsap.utils.toArray('#contact .border-l > div').forEach((el, i) => {
+                gsap.from(el, {
+                    x: isMobile ? 0 : 30, y: isMobile ? 10 : 0, opacity: 0, duration: isMobile ? 0.4 : 0.8, delay: (isMobile ? 0 : 0.3) + i * (isMobile ? 0.05 : 0.2),
+                    scrollTrigger: { trigger: '#contact .border-l', start: 'top 85%' }
+                });
+            });
+
+            // 底部 CTA 按钮
+            gsap.from('#contact a[href^="mailto"]', {
+                scale: isMobile ? 0.9 : 0.8, opacity: 0, duration: isMobile ? 0.4 : 0.8,
+                scrollTrigger: { trigger: '#contact a[href^="mailto"]', start: 'top 95%' }
+            });
+        }
+    })();
+    </script>
+</body>
+</html>
