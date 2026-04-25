@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDEL · 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Noto Sans SC', sans-serif; }
+        body { background: #0a0a0a; color: #e5e5e5; }
+        
+        .glass { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(20px); }
+        .glass-hover:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+        
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-ghost { background: rgba(255,255,255,0.05); color: #a3a3a3; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); color: white; }
+        
+        .input-dark { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; }
+        .input-dark:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+        
+        .sidebar-item { transition: all 0.2s; }
+        .sidebar-item:hover, .sidebar-item.active { background: rgba(255,255,255,0.06); color: white; }
+        .sidebar-item.active { border-left: 2px solid #3b82f6; }
+        
+        .stat-card { transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); }
+        
+        .table-row:hover { background: rgba(255,255,255,0.03); }
+        
+        .modal-backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); }
+        
+        .drop-zone { border: 2px dashed rgba(255,255,255,0.15); transition: all 0.3s; }
+        .drop-zone.active { border-color: #3b82f6; background: rgba(59,130,246,0.05); }
+        
+        .badge { padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; }
+        .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+        .badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
+        .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+        .badge-gray { background: rgba(163,163,163,0.15); color: #a3a3a3; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body x-data="admin()" x-init="init()">
+
+    <!-- Login Screen -->
+    <template x-if="!isLoggedIn">
+        <div class="min-h-screen flex items-center justify-center px-4">
+            <div class="w-full max-w-sm">
+                <div class="text-center mb-10">
+                    <h1 class="text-3xl font-light tracking-tight mb-2">IDEL<span class="text-blue-400">.</span></h1>
+                    <p class="text-xs tracking-widest uppercase text-white/40">管理后台</p>
+                </div>
+                <form @submit.prevent="login()" class="space-y-4">
+                    <div>
+                        <input x-model="loginForm.username" type="text" placeholder="用户名" 
+                               class="w-full px-4 py-3 rounded-xl input-dark text-sm" required>
+                    </div>
+                    <div>
+                        <input x-model="loginForm.password" type="password" placeholder="密码" 
+                               class="w-full px-4 py-3 rounded-xl input-dark text-sm" required>
+                    </div>
+                    <div x-show="loginError" class="text-red-400 text-xs text-center" x-text="loginError"></div>
+                    <button type="submit" class="w-full py-3 rounded-xl btn-primary text-sm font-medium tracking-wider uppercase">
+                        登录
+                    </button>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <!-- Main Dashboard -->
+    <template x-if="isLoggedIn">
+        <div class="flex min-h-screen">
+            <!-- Sidebar -->
+            <aside class="w-64 border-r border-white/5 flex flex-col fixed h-screen z-30">
+                <div class="p-6 border-b border-white/5">
+                    <h1 class="text-xl font-light tracking-tight">IDEL<span class="text-blue-400">.</span></h1>
+                    <p class="text-[10px] tracking-widest uppercase text-white/30 mt-1">管理后台</p>
+                </div>
+                
+                <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+                    <button @click="currentPage = 'dashboard'" 
+                            class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-white/60"
+                            :class="currentPage === 'dashboard' && 'active'">
+                        <span>📊</span> 仪表盘
+                    </button>
+                    <button @click="currentPage = 'categories'" 
+                            class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-white/60"
+                            :class="currentPage === 'categories' && 'active'">
+                        <span>📁</span> 分类管理
+                    </button>
+                    <button @click="currentPage = 'works'; loadWorks()" 
+                            class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-white/60"
+                            :class="currentPage === 'works' && 'active'">
+                        <span>🎨</span> 作品管理
+                    </button>
+                    <button @click="currentPage = 'files'; loadFiles()" 
+                            class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-white/60"
+                            :class="currentPage === 'files' && 'active'">
+                        <span>📂</span> 文件管理
+                    </button>
+                    <button @click="currentPage = 'downloads'" 
+                            class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-white/60"
+                            :class="currentPage === 'downloads' && 'active'">
+                        <span>⬇️</span> 下载统计
+                    </button>
+                    <button @click="currentPage = 'copyright'; loadCopyright()" 
+                            class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-white/60"
+                            :class="currentPage === 'copyright' && 'active'">
+                        <span>©</span> 版权设置
+                    </button>
+                </nav>
+                
+                <div class="p-4 border-t border-white/5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm" x-text="adminUser?.display_name || '管理员'"></div>
+                            <div class="text-[10px] text-white/30" x-text="adminUser?.username"></div>
+                        </div>
+                        <button @click="logout()" class="text-white/30 hover:text-white text-xs">退出</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 ml-64 p-8 overflow-y-auto">
+                
+                <!-- Dashboard -->
+                <div x-show="currentPage === 'dashboard'" class="fade-in">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-light">仪表盘</h2>
+                        <p class="text-sm text-white/40 mt-1">作品集系统概览</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-4 gap-4 mb-8">
+                        <div class="stat-card glass rounded-2xl p-6">
+                            <div class="text-3xl font-light text-blue-400" x-text="stats.categories || 0"></div>
+                            <div class="text-xs text-white/40 mt-1 tracking-wider uppercase">分类</div>
+                        </div>
+                        <div class="stat-card glass rounded-2xl p-6">
+                            <div class="text-3xl font-light text-purple-400" x-text="stats.works || 0"></div>
+                            <div class="text-xs text-white/40 mt-1 tracking-wider uppercase">作品总数</div>
+                        </div>
+                        <div class="stat-card glass rounded-2xl p-6">
+                            <div class="text-3xl font-light text-green-400" x-text="stats.publishedWorks || 0"></div>
+                            <div class="text-xs text-white/40 mt-1 tracking-wider uppercase">已发布</div>
+                        </div>
+                        <div class="stat-card glass rounded-2xl p-6">
+                            <div class="text-3xl font-light text-yellow-400" x-text="stats.totalDownloads || 0"></div>
+                            <div class="text-xs text-white/40 mt-1 tracking-wider uppercase">总下载</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="glass rounded-2xl p-6">
+                            <h3 class="text-sm font-medium mb-4 text-white/60">🔥 热门作品</h3>
+                            <div class="space-y-3">
+                                <template x-for="w in stats.topWorks || []" :key="w.id">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-white/80" x-text="w.title"></span>
+                                        <span class="badge badge-blue" x-text="w.download_count + ' 次下载'"></span>
+                                    </div>
+                                </template>
+                                <div x-show="!stats.topWorks?.length" class="text-white/30 text-sm">暂无下载记录</div>
+                            </div>
+                        </div>
+                        <div class="glass rounded-2xl p-6">
+                            <h3 class="text-sm font-medium mb-4 text-white/60">📥 最近下载</h3>
+                            <div class="space-y-3">
+                                <template x-for="d in stats.recentDownloads || []" :key="d.id">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-white/80" x-text="d.work_title || '未知'"></span>
+                                        <span class="text-white/30 text-xs" x-text="formatDate(d.downloaded_at)"></span>
+                                    </div>
+                                </template>
+                                <div x-show="!stats.recentDownloads?.length" class="text-white/30 text-sm">暂无下载记录</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Categories Management -->
+                <div x-show="currentPage === 'categories'" class="fade-in">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 class="text-2xl font-light">分类管理</h2>
+                            <p class="text-sm text-white/40 mt-1">管理作品集的分类</p>
+                        </div>
+                        <button @click="openCategoryModal()" class="px-5 py-2.5 rounded-xl btn-primary text-sm">+ 新建分类</button>
+                    </div>
+
+                    <div class="space-y-3">
+                        <template x-for="cat in categories" :key="cat.id">
+                            <div class="glass rounded-xl p-5 flex items-center justify-between glass-hover transition-all">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-3 h-3 rounded-full" :style="'background:' + cat.accent_color"></div>
+                                    <div>
+                                        <div class="text-sm font-medium" x-text="cat.title"></div>
+                                        <div class="text-xs text-white/40" x-text="cat.label"></div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="badge badge-gray" x-text="(cat.works?.length || 0) + ' 件作品'"></span>
+                                    <button @click="openCategoryModal(cat)" class="text-white/40 hover:text-white text-xs">编辑</button>
+                                    <button @click="deleteCategory(cat.id)" class="text-red-400/60 hover:text-red-400 text-xs">删除</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Category Modal -->
+                    <template x-if="showCategoryModal">
+                        <div class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" @click.self="showCategoryModal = false">
+                            <div class="w-full max-w-md glass rounded-2xl p-8">
+                                <h3 class="text-lg font-medium mb-6" x-text="editingCategory ? '编辑分类' : '新建分类'"></h3>
+                                <form @submit.prevent="saveCategory()" class="space-y-4">
+                                    <div>
+                                        <label class="text-xs text-white/40 tracking-wider uppercase">标题</label>
+                                        <input x-model="categoryForm.title" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm" placeholder="如：AI短剧" required>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white/40 tracking-wider uppercase">英文标签</label>
+                                        <input x-model="categoryForm.label" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm" placeholder="如：AI Short Film" required>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white/40 tracking-wider uppercase">主题色</label>
+                                        <div class="flex items-center gap-3 mt-1">
+                                            <input type="color" x-model="categoryForm.accent_color" class="w-10 h-10 rounded-lg cursor-pointer">
+                                            <input x-model="categoryForm.accent_color" class="flex-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white/40 tracking-wider uppercase">封面图 URL</label>
+                                        <input x-model="categoryForm.cover" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm" placeholder="https://...">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white/40 tracking-wider uppercase">排序</label>
+                                        <input x-model.number="categoryForm.sort_order" type="number" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                                    </div>
+                                    <div class="flex gap-3 pt-2">
+                                        <button type="submit" class="flex-1 py-2.5 rounded-xl btn-primary text-sm">保存</button>
+                                        <button type="button" @click="showCategoryModal = false" class="flex-1 py-2.5 rounded-xl btn-ghost text-sm">取消</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Works Management -->
+                <div x-show="currentPage === 'works'" class="fade-in">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 class="text-2xl font-light">作品管理</h2>
+                            <p class="text-sm text-white/40 mt-1">管理所有作品内容</p>
+                        </div>
+                        <button @click="openWorkModal()" class="px-5 py-2.5 rounded-xl btn-primary text-sm">+ 新建作品</button>
+                    </div>
+
+                    <!-- Category Filter -->
+                    <div class="flex gap-2 mb-6">
+                        <button @click="workFilter = 'all'" 
+                                class="px-4 py-2 rounded-lg text-xs tracking-wider uppercase transition-all"
+                                :class="workFilter === 'all' ? 'bg-blue-500/20 text-blue-400' : 'btn-ghost'">
+                            全部
+                        </button>
+                        <template x-for="cat in categories" :key="cat.id">
+                            <button @click="workFilter = cat.id"
+                                    class="px-4 py-2 rounded-lg text-xs tracking-wider uppercase transition-all"
+                                    :class="workFilter === cat.id ? 'bg-blue-500/20 text-blue-400' : 'btn-ghost'">
+                                <span x-text="cat.title"></span>
+                            </button>
+                        </template>
+                    </div>
+
+                    <div class="space-y-3">
+                        <template x-for="work in filteredWorks" :key="work.id">
+                            <div class="glass rounded-xl p-5 glass-hover transition-all">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-4">
+                                        <img :src="work.thumb || work.img" class="w-16 h-12 rounded-lg object-cover" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 75%22><rect fill=%22%23222%22 width=%22100%22 height=%2275%22/></svg>'">
+                                        <div>
+                                            <div class="text-sm font-medium" x-text="work.title"></div>
+                                            <div class="text-xs text-white/40" x-text="work.type"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <span class="badge" :class="work.is_published ? 'badge-green' : 'badge-red'" 
+                                              x-text="work.is_published ? '已发布' : '草稿'"></span>
+                                        <span x-show="work.download_file" class="badge badge-blue">有文件</span>
+                                        <span class="text-white/30 text-xs" x-text="work.download_count + ' 下载'"></span>
+                                        <button @click="openWorkModal(work)" class="text-white/40 hover:text-white text-xs">编辑</button>
+                                        <button @click="deleteWork(work.id)" class="text-red-400/60 hover:text-red-400 text-xs">删除</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Work Modal -->
+                    <template x-if="showWorkModal">
+                        <div class="fixed inset-0 z-50 flex items-start justify-center modal-backdrop overflow-y-auto py-8" @click.self="showWorkModal = false">
+                            <div class="w-full max-w-2xl glass rounded-2xl p-8">
+                                <h3 class="text-lg font-medium mb-6" x-text="editingWork ? '编辑作品' : '新建作品'"></h3>
+                                <form @submit.prevent="saveWork()" class="space-y-4">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="text-xs text-white/40 tracking-wider uppercase">标题</label>
+                                            <input x-model="workForm.title" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm" required>
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-white/40 tracking-wider uppercase">分类</label>
+                                            <select x-model="workForm.category_id" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm" required>
+                                                <template x-for="cat in categories" :key="cat.id">
+                                                    <option :value="cat.id" x-text="cat.title"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white/40 tracking-wider uppercase">类型</label>
+                                        <input x-model="workForm.type" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm" placeholder="如：AI短剧">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="text-xs text-white/40 tracking-wider uppercase">缩略图 URL</label>
+                                            <input x-model="workForm.thumb" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-white/40 tracking-wider uppercase">大图 URL</label>
+                                            <input x-model="workForm.img" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white/40 tracking-wider uppercase">视频 URL</label>
+                                        <input x-model="workForm.video" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white/40 tracking-wider uppercase">创意脚本</label>
+                                        <textarea x-model="workForm.script" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm h-24 resize-none"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white/40 tracking-wider uppercase">下载文件</label>
+                                        <div class="mt-1 flex items-center gap-3">
+                                            <template x-if="workForm.download_file">
+                                                <div class="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 text-sm">
+                                                    <span class="text-green-400">✓</span>
+                                                    <span x-text="workForm.original_filename || workForm.download_file" class="truncate"></span>
+                                                    <button type="button" @click="workForm.download_file = ''; workForm.original_filename = ''" class="ml-auto text-red-400 hover:text-red-300">✕</button>
+                                                </div>
+                                            </template>
+                                            <template x-if="!workForm.download_file">
+                                                <div class="flex-1">
+                                                    <input type="file" @change="uploadWorkFile($event)" class="text-sm text-white/40 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-500/20 file:text-blue-400 file:text-xs file:cursor-pointer">
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-6">
+                                        <div>
+                                            <label class="text-xs text-white/40 tracking-wider uppercase">排序</label>
+                                            <input x-model.number="workForm.sort_order" type="number" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                                        </div>
+                                        <label class="flex items-center gap-2 cursor-pointer mt-4">
+                                            <input type="checkbox" x-model="workForm.is_published" class="rounded">
+                                            <span class="text-sm">发布</span>
+                                        </label>
+                                    </div>
+                                    <div class="flex gap-3 pt-2">
+                                        <button type="submit" class="flex-1 py-2.5 rounded-xl btn-primary text-sm">保存</button>
+                                        <button type="button" @click="showWorkModal = false" class="flex-1 py-2.5 rounded-xl btn-ghost text-sm">取消</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Files Management -->
+                <div x-show="currentPage === 'files'" class="fade-in">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 class="text-2xl font-light">文件管理</h2>
+                            <p class="text-sm text-white/40 mt-1">管理上传的所有文件</p>
+                        </div>
+                        <div>
+                            <input type="file" id="fileUploadInput" @change="uploadFile($event)" class="hidden" multiple>
+                            <button @click="document.getElementById('fileUploadInput').click()" class="px-5 py-2.5 rounded-xl btn-primary text-sm">+ 上传文件</button>
+                        </div>
+                    </div>
+
+                    <!-- Drop Zone -->
+                    <div class="drop-zone rounded-2xl p-12 text-center mb-6"
+                         @dragover.prevent="$el.classList.add('active')"
+                         @dragleave="$el.classList.remove('active')"
+                         @drop.prevent="handleDrop($event); $el.classList.remove('active')">
+                        <div class="text-3xl mb-3">📁</div>
+                        <p class="text-sm text-white/40">拖拽文件到此处上传</p>
+                        <p class="text-xs text-white/20 mt-1">支持图片、视频、压缩包等</p>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <template x-for="file in files" :key="file.path">
+                            <div class="glass rounded-xl p-4 glass-hover transition-all">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="badge" :class="file.type === 'videos' ? 'badge-blue' : file.type === 'thumbnails' ? 'badge-gray' : 'badge-green'" 
+                                          x-text="file.type"></span>
+                                    <button @click="deleteFile(file)" class="text-red-400/60 hover:text-red-400 text-xs">删除</button>
+                                </div>
+                                <div class="text-sm truncate mb-1" x-text="file.filename"></div>
+                                <div class="text-xs text-white/30" x-text="formatSize(file.size)"></div>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <span x-show="file.isAttached" class="badge badge-green">已绑定</span>
+                                    <a :href="file.url" target="_blank" class="text-xs text-blue-400 hover:underline">预览</a>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Download Stats -->
+                <div x-show="currentPage === 'downloads'" class="fade-in" x-init="loadDownloadStats()">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-light">下载统计</h2>
+                        <p class="text-sm text-white/40 mt-1">查看作品下载数据</p>
+                    </div>
+
+                    <div class="glass rounded-2xl p-6 mb-6">
+                        <div class="text-3xl font-light text-blue-400" x-text="downloadStats.totalDownloads || 0"></div>
+                        <div class="text-xs text-white/40 mt-1 tracking-wider uppercase">总下载次数</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="glass rounded-2xl p-6">
+                            <h3 class="text-sm font-medium mb-4 text-white/60">📊 作品下载排行</h3>
+                            <div class="space-y-3">
+                                <template x-for="w in downloadStats.topWorks || []" :key="w.id">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <div class="text-sm" x-text="w.title"></div>
+                                            <div class="text-xs text-white/30" x-text="w.category_title"></div>
+                                        </div>
+                                        <span class="badge badge-blue" x-text="w.download_count"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="glass rounded-2xl p-6">
+                            <h3 class="text-sm font-medium mb-4 text-white/60">🕐 最近下载记录</h3>
+                            <div class="space-y-3 max-h-80 overflow-y-auto">
+                                <template x-for="d in downloadStats.recentDownloads || []" :key="d.id">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <div>
+                                            <div x-text="d.work_title || '未知'"></div>
+                                            <div class="text-xs text-white/30" x-text="d.ip_address"></div>
+                                        </div>
+                                        <span class="text-xs text-white/30" x-text="formatDate(d.downloaded_at)"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Copyright Settings -->
+                <div x-show="currentPage === 'copyright'" class="fade-in">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-light">版权设置</h2>
+                        <p class="text-sm text-white/40 mt-1">配置下载文件的版权保护方式</p>
+                    </div>
+
+                    <div class="max-w-2xl space-y-6">
+                        <div class="glass rounded-2xl p-6 space-y-4">
+                            <h3 class="text-sm font-medium text-white/60">基本信息</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs text-white/40 tracking-wider uppercase">作者名</label>
+                                    <input x-model="copyrightForm.author_name" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-white/40 tracking-wider uppercase">邮箱</label>
+                                    <input x-model="copyrightForm.email" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs text-white/40 tracking-wider uppercase">网站</label>
+                                <input x-model="copyrightForm.website" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs text-white/40 tracking-wider uppercase">版权文字</label>
+                                <textarea x-model="copyrightForm.copyright_text" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm h-16 resize-none"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="glass rounded-2xl p-6 space-y-4">
+                            <h3 class="text-sm font-medium text-white/60">水印设置</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs text-white/40 tracking-wider uppercase">水印透明度</label>
+                                    <div class="flex items-center gap-3 mt-1">
+                                        <input type="range" x-model="copyrightForm.watermark_opacity" min="0.05" max="0.5" step="0.01" class="flex-1">
+                                        <span class="text-sm text-white/60" x-text="parseFloat(copyrightForm.watermark_opacity).toFixed(2)"></span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-white/40 tracking-wider uppercase">水印位置</label>
+                                    <select x-model="copyrightForm.watermark_position" class="w-full mt-1 px-4 py-2.5 rounded-xl input-dark text-sm">
+                                        <option value="bottom-right">右下角</option>
+                                        <option value="bottom-left">左下角</option>
+                                        <option value="top-right">右上角</option>
+                                        <option value="top-left">左上角</option>
+                                        <option value="center">居中</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex gap-6">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" x-model="copyrightForm.embed_exif" class="rounded">
+                                    <span class="text-sm">注入 EXIF 版权数据</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" x-model="copyrightForm.embed_watermark" class="rounded">
+                                    <span class="text-sm">添加可见水印</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="glass rounded-2xl p-6">
+                            <h3 class="text-sm font-medium text-white/60 mb-4">预览效果</h3>
+                            <div class="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl h-48 flex items-center justify-center overflow-hidden">
+                                <div class="text-white/20 text-sm">示例图片区域</div>
+                                <!-- Watermark Preview -->
+                                <div class="absolute inset-0" style="transform: rotate(-30deg); opacity: 0.08;">
+                                    <div class="flex flex-wrap gap-8 p-8">
+                                        <template x-for="i in 12">
+                                            <span class="text-white text-xs whitespace-nowrap" x-text="copyrightForm.author_name + ' © ' + new Date().getFullYear()"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div class="absolute bottom-3 right-3 text-right">
+                                    <div class="text-white text-xs font-bold" style="opacity: 0.7" x-text="copyrightForm.author_name + ' © ' + new Date().getFullYear()"></div>
+                                    <div class="text-white text-[10px]" style="opacity: 0.5" x-text="copyrightForm.website || copyrightForm.email"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button @click="saveCopyright()" class="px-8 py-3 rounded-xl btn-primary text-sm">保存设置</button>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </template>
+
+    <!-- Toast Notification -->
+    <div x-show="toast.show" x-transition
+         class="fixed bottom-6 right-6 z-[100] px-6 py-3 rounded-xl text-sm shadow-2xl"
+         :class="toast.type === 'success' ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'">
+        <span x-text="toast.message"></span>
+    </div>
+
+    <script>
+    function admin() {
+        return {
+            isLoggedIn: false,
+            adminUser: null,
+            currentPage: 'dashboard',
+            loginForm: { username: '', password: '' },
+            loginError: '',
+            
+            // Data
+            stats: {},
+            categories: [],
+            allWorks: [],
+            files: [],
+            downloadStats: {},
+            copyrightForm: {},
+            
+            // UI State
+            workFilter: 'all',
+            showCategoryModal: false,
+            showWorkModal: false,
+            editingCategory: null,
+            editingWork: null,
+            categoryForm: { title: '', label: '', accent_color: '#60a5fa', cover: '', sort_order: 0 },
+            workForm: { title: '', type: '', category_id: '', thumb: '', img: '', video: '', script: '', download_file: '', original_filename: '', sort_order: 0, is_published: true },
+            
+            toast: { show: false, message: '', type: 'success' },
+
+            get filteredWorks() {
+                if (this.workFilter === 'all') return this.allWorks;
+                return this.allWorks.filter(w => w.category_id == this.workFilter);
+            },
+
+            async init() {
+                const token = localStorage.getItem('admin_token');
+                if (token) {
+                    try {
+                        const res = await this.api('/api/auth/me');
+                        this.adminUser = res;
+                        this.isLoggedIn = true;
+                        this.loadDashboard();
+                    } catch {
+                        localStorage.removeItem('admin_token');
+                    }
+                }
+            },
+
+            async api(url, options = {}) {
+                const token = localStorage.getItem('admin_token');
+                const headers = { 'Content-Type': 'application/json', ...options.headers };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+                
+                const res = await fetch(url, { ...options, headers, credentials: 'include' });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: '请求失败' }));
+                    throw new Error(err.error || '请求失败');
+                }
+                return res.json();
+            },
+
+            async login() {
+                this.loginError = '';
+                try {
+                    const res = await this.api('/api/auth/login', {
+                        method: 'POST',
+                        body: JSON.stringify(this.loginForm)
+                    });
+                    localStorage.setItem('admin_token', res.token);
+                    this.adminUser = res.admin;
+                    this.isLoggedIn = true;
+                    this.loadDashboard();
+                } catch (err) {
+                    this.loginError = err.message;
+                }
+            },
+
+            async logout() {
+                await this.api('/api/auth/logout', { method: 'POST' });
+                localStorage.removeItem('admin_token');
+                this.isLoggedIn = false;
+                this.adminUser = null;
+            },
+
+            async loadDashboard() {
+                this.stats = await this.api('/api/dashboard/stats');
+                this.categories = await this.api('/api/categories/admin');
+            },
+
+            async loadWorks() {
+                this.categories = await this.api('/api/categories/admin');
+                // Flatten all works from categories
+                this.allWorks = [];
+                this.categories.forEach(cat => {
+                    (cat.works || []).forEach(w => {
+                        this.allWorks.push({ ...w, category_id: cat.id, category_title: cat.title });
+                    });
+                });
+            },
+
+            async loadFiles() {
+                this.files = await this.api('/api/upload/files');
+            },
+
+            async loadDownloadStats() {
+                this.downloadStats = await this.api('/api/download/stats/overview');
+            },
+
+            async loadCopyright() {
+                this.copyrightForm = await this.api('/api/download/config/copyright');
+            },
+
+            // Category CRUD
+            openCategoryModal(cat = null) {
+                this.editingCategory = cat;
+                this.categoryForm = cat ? { ...cat } : { title: '', label: '', accent_color: '#60a5fa', cover: '', sort_order: 0 };
+                this.showCategoryModal = true;
+            },
+
+            async saveCategory() {
+                try {
+                    if (this.editingCategory) {
+                        await this.api(`/api/categories/${this.editingCategory.id}`, {
+                            method: 'PUT', body: JSON.stringify(this.categoryForm)
+                        });
+                    } else {
+                        await this.api('/api/categories', {
+                            method: 'POST', body: JSON.stringify(this.categoryForm)
+                        });
+                    }
+                    this.showCategoryModal = false;
+                    this.categories = await this.api('/api/categories/admin');
+                    this.showToast('保存成功', 'success');
+                } catch (err) {
+                    this.showToast(err.message, 'error');
+                }
+            },
+
+            async deleteCategory(id) {
+                if (!confirm('确定删除此分类？分类下的所有作品也会被删除。')) return;
+                try {
+                    await this.api(`/api/categories/${id}`, { method: 'DELETE' });
+                    this.categories = await this.api('/api/categories/admin');
+                    this.showToast('删除成功', 'success');
+                } catch (err) {
+                    this.showToast(err.message, 'error');
+                }
+            },
+
+            // Works CRUD
+            openWorkModal(work = null) {
+                this.editingWork = work;
+                this.workForm = work ? { ...work, is_published: !!work.is_published } : {
+                    title: '', type: '', category_id: this.categories[0]?.id || '',
+                    thumb: '', img: '', video: '', script: '', download_file: '', original_filename: '',
+                    sort_order: 0, is_published: true
+                };
+                this.showWorkModal = true;
+            },
+
+            async uploadWorkFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                try {
+                    const token = localStorage.getItem('admin_token');
+                    const res = await fetch('/api/upload/file', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        this.workForm.download_file = data.file.path;
+                        this.workForm.original_filename = data.file.originalName;
+                        this.showToast('文件上传成功', 'success');
+                    }
+                } catch (err) {
+                    this.showToast('上传失败', 'error');
+                }
+            },
+
+            async saveWork() {
+                try {
+                    if (this.editingWork) {
+                        await this.api(`/api/works/${this.editingWork.id}`, {
+                            method: 'PUT', body: JSON.stringify(this.workForm)
+                        });
+                        // Re-attach file if needed
+                        if (this.workForm.download_file) {
+                            await this.api(`/api/upload/attach/${this.editingWork.id}`, {
+                                method: 'POST',
+                                body: JSON.stringify({ file_path: this.workForm.download_file, original_filename: this.workForm.original_filename })
+                            });
+                        }
+                    } else {
+                        const res = await this.api('/api/works', {
+                            method: 'POST', body: JSON.stringify(this.workForm)
+                        });
+                        if (this.workForm.download_file && res.id) {
+                            await this.api(`/api/upload/attach/${res.id}`, {
+                                method: 'POST',
+                                body: JSON.stringify({ file_path: this.workForm.download_file, original_filename: this.workForm.original_filename })
+                            });
+                        }
+                    }
+                    this.showWorkModal = false;
+                    await this.loadWorks();
+                    this.showToast('保存成功', 'success');
+                } catch (err) {
+                    this.showToast(err.message, 'error');
+                }
+            },
+
+            async deleteWork(id) {
+                if (!confirm('确定删除此作品？')) return;
+                try {
+                    await this.api(`/api/works/${id}`, { method: 'DELETE' });
+                    await this.loadWorks();
+                    this.showToast('删除成功', 'success');
+                } catch (err) {
+                    this.showToast(err.message, 'error');
+                }
+            },
+
+            // File upload
+            async uploadFile(event) {
+                const files = event.target.files;
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                        const token = localStorage.getItem('admin_token');
+                        await fetch('/api/upload/file', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` },
+                            body: formData
+                        });
+                    } catch (err) {
+                        this.showToast(`上传失败: ${file.name}`, 'error');
+                    }
+                }
+                this.loadFiles();
+                this.showToast('上传完成', 'success');
+            },
+
+            handleDrop(event) {
+                const files = event.dataTransfer.files;
+                const input = document.getElementById('fileUploadInput');
+                // Create a new DataTransfer to set files
+                const dt = new DataTransfer();
+                for (const f of files) dt.items.add(f);
+                input.files = dt.files;
+                this.uploadFile({ target: input });
+            },
+
+            async deleteFile(file) {
+                if (file.isAttached) {
+                    this.showToast('文件正在使用中，请先解绑', 'error');
+                    return;
+                }
+                if (!confirm(`确定删除 ${file.filename}？`)) return;
+                try {
+                    await this.api(`/api/upload/file/${file.type}/${file.filename}`, { method: 'DELETE' });
+                    this.loadFiles();
+                    this.showToast('删除成功', 'success');
+                } catch (err) {
+                    this.showToast(err.message, 'error');
+                }
+            },
+
+            // Copyright
+            async saveCopyright() {
+                try {
+                    await this.api('/api/download/config/copyright', {
+                        method: 'PUT', body: JSON.stringify(this.copyrightForm)
+                    });
+                    this.showToast('版权设置已保存', 'success');
+                } catch (err) {
+                    this.showToast(err.message, 'error');
+                }
+            },
+
+            // Utils
+            formatDate(dateStr) {
+                if (!dateStr) return '';
+                const d = new Date(dateStr);
+                return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            },
+
+            formatSize(bytes) {
+                if (!bytes) return '0 B';
+                const units = ['B', 'KB', 'MB', 'GB'];
+                let i = 0;
+                while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+                return bytes.toFixed(1) + ' ' + units[i];
+            },
+
+            showToast(message, type = 'success') {
+                this.toast = { show: true, message, type };
+                setTimeout(() => { this.toast.show = false; }, 3000);
+            }
+        };
+    }
+    </script>
+</body>
+</html>
