@@ -8,9 +8,13 @@ let dbInstance = null;
 
 function saveDB() {
     if (!dbInstance) return;
-    const data = dbInstance.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
+    try {
+        const data = dbInstance.export();
+        const buffer = Buffer.from(data);
+        fs.writeFileSync(DB_PATH, buffer);
+    } catch (err) {
+        console.error('❌ 数据库保存失败:', err.message);
+    }
 }
 
 async function initDatabase() {
@@ -128,3 +132,4 @@ function wrapDB() {
 }
 
 module.exports = { initDatabase, DB_PATH };
+
