@@ -106,7 +106,7 @@
                             :class="currentPage === 'works' && 'active'">
                         <span>🎨</span> 作品管理
                     </button>
-                    <button @click="currentPage = 'files'; loadFiles()" 
+                    <button @click="currentPage = 'files'; loadFiles(); loadWorks()" 
                             class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-white/60"
                             :class="currentPage === 'files' && 'active'">
                         <span>📂</span> 文件管理
@@ -395,7 +395,13 @@
                             <h2 class="text-2xl font-light">文件管理</h2>
                             <p class="text-sm text-white/40 mt-1">管理上传的所有文件</p>
                         </div>
-                        <div>
+                        <div class="flex items-center gap-3">
+                            <select x-model="uploadTargetWorkId" class="px-4 py-2.5 rounded-xl input-dark text-sm" style="min-width:200px">
+                                <option value="">-- 不绑定作品 --</option>
+                                <template x-for="w in allWorks" :key="w.id">
+                                    <option :value="w.id" x-text="w.title + ' (' + (w.category_title || '') + ')'"></option>
+                                </template>
+                            </select>
                             <input type="file" id="fileUploadInput" @change="uploadFile($event)" class="hidden" multiple>
                             <button @click="document.getElementById('fileUploadInput').click()" class="px-5 py-2.5 rounded-xl btn-primary text-sm">+ 上传文件</button>
                         </div>
@@ -597,6 +603,7 @@
             categoryForm: { title: '', label: '', accent_color: '#60a5fa', cover: '', sort_order: 0 },
             workForm: { title: '', type: '', category_id: '', thumb: '', img: '', video: '', script: '', download_file: '', original_filename: '', sort_order: 0, is_published: true },
             
+            uploadTargetWorkId: '',
             toast: { show: false, message: '', type: 'success' },
 
             get filteredWorks() {
@@ -800,22 +807,38 @@
             // File upload
             async uploadFile(event) {
                 const files = event.target.files;
+                const targetWorkId = this.uploadTargetWorkId;
                 for (const file of files) {
                     const formData = new FormData();
                     formData.append('file', file);
                     try {
                         const token = localStorage.getItem('admin_token');
-                        await fetch('/api/upload/file', {
+                        const res = await fetch('/api/upload/file', {
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${token}` },
                             body: formData
                         });
+                        const data = await res.json();
+                        // If a work is selected, auto-attach the file
+                        if (targetWorkId && data.success && data.file) {
+                            await this.api(`/api/upload/attach/${targetWorkId}`, {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    file_path: data.file.path,
+                                    original_filename: data.file.originalName
+                                })
+                            });
+                        }
                     } catch (err) {
                         this.showToast(`上传失败: ${file.name}`, 'error');
                     }
                 }
                 this.loadFiles();
-                this.showToast('上传完成', 'success');
+                if (targetWorkId) {
+                    this.showToast('上传完成并已绑定到作品', 'success');
+                } else {
+                    this.showToast('上传完成（未绑定作品）', 'success');
+                }
             },
 
             handleDrop(event) {
