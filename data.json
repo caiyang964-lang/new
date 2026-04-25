@@ -6,16 +6,6 @@
     "cover": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80",
     "works": [
       {
-        "id": 1,
-        "title": "失落协议 · 序章",
-        "type": "AI短剧",
-        "thumb": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80",
-        "img": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80",
-        "video": "",
-        "script": "在数字荒原中寻找人类最后的体温。",
-        "hasDownload": false
-      },
-      {
         "id": 2,
         "title": "失落协议 · 崩塌",
         "type": "AI短剧",
