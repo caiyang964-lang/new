@@ -1,84 +1,124 @@
 [
   {
-    "title": "AI 短剧",
-    "label": "AI SHORT FILM",
-    "accent_color": "#3b82f6",
-    "cover": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80",
+    "title": "AI短剧",
+    "label": "AI Short Film",
+    "accent_color": "#60a5fa",
+    "cover": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80",
     "works": [
       {
-        "id": 1,
-        "title": "《迷雾之城》",
-        "type": "AI 短片",
-        "thumb": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80",
-        "img": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80",
+        "id": 11,
+        "title": "1",
+        "type": "1",
+        "thumb": "/uploads/images/1777102150401-6fzexn.png",
+        "img": "/uploads/images/1777102150401-6fzexn.png",
         "video": "",
-        "script": "在一座永远被迷雾笼罩的城市里，一个孤独的信使穿梭于高楼之间。他不知道自己要送达什么，只知道脚步不能停。直到有一天，他在雾中看见了自己的倒影——那封信，原来是写给自己的。",
+        "script": "",
+        "hasDownload": true
+      },
+      {
+        "id": 1,
+        "title": "失落协议 · 序章",
+        "type": "AI短剧",
+        "thumb": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80",
+        "img": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80",
+        "video": "",
+        "script": "在数字荒原中寻找人类最后的体温。",
         "hasDownload": false
       },
       {
         "id": 2,
-        "title": "《最后一帧》",
-        "type": "AI 视频",
-        "thumb": "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80",
-        "img": "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80",
-        "video": "",
-        "script": "一位老摄影师在暗房里冲洗最后一卷胶卷。每一张照片都是一段被遗忘的记忆。当最后一张照片显现时，他看见了一个从未去过的地方——但那个地方，似乎也在等他。",
-        "hasDownload": false
-      }
-    ]
-  },
-  {
-    "title": "视觉设计",
-    "label": "VISUAL DESIGN",
-    "accent_color": "#a855f7",
-    "cover": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?auto=format&fit=crop&q=80",
-    "works": [
-      {
-        "id": 3,
-        "title": "品牌视觉系统",
-        "type": "品牌设计",
+        "title": "失落协议 · 崩塌",
+        "type": "AI短剧",
         "thumb": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?auto=format&fit=crop&q=80",
         "img": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?auto=format&fit=crop&q=80",
         "video": "",
-        "script": "为一家科技初创公司设计的完整品牌视觉系统。从 logo 到色彩体系，从字体选择到应用场景，每一个细节都在讲述同一个故事：技术可以是温暖的。",
+        "script": "系统崩溃前的最后一帧。",
         "hasDownload": false
       },
       {
-        "id": 4,
-        "title": "动态海报系列",
-        "type": "动态设计",
-        "thumb": "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80",
-        "img": "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80",
+        "id": 3,
+        "title": "失落协议 · 重生",
+        "type": "AI短剧",
+        "thumb": "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&q=80",
+        "img": "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&q=80",
         "video": "",
-        "script": "探索静态与动态的边界。这些海报在静止时是平面设计，在播放时是微型电影。每一张都在 3 秒内完成一次叙事循环。",
+        "script": "废墟之上，新的协议正在被书写。",
         "hasDownload": false
       }
     ]
   },
   {
     "title": "摄影作品",
-    "label": "PHOTOGRAPHY",
-    "accent_color": "#ec4899",
-    "cover": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80",
+    "label": "Photography",
+    "accent_color": "#a78bfa",
+    "cover": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80",
     "works": [
       {
-        "id": 5,
-        "title": "《城市呼吸》",
-        "type": "纪实摄影",
-        "thumb": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80",
-        "img": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80",
+        "id": 4,
+        "title": "留白 #01",
+        "type": "摄影作品",
+        "thumb": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80",
+        "img": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80",
         "video": "",
-        "script": "凌晨四点的城市，霓虹灯与晨光交织。街道上只有清洁工和失眠者。这个系列记录了城市在不同呼吸频率下的面孔——喧嚣前的宁静，喧嚣后的疲惫。",
+        "script": "冷调、大面积留白。",
+        "hasDownload": false
+      },
+      {
+        "id": 5,
+        "title": "留白 #02",
+        "type": "摄影作品",
+        "thumb": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80",
+        "img": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80",
+        "video": "",
+        "script": "侧面轮廓光。",
         "hasDownload": false
       },
       {
         "id": 6,
-        "title": "《光影对话》",
-        "type": "艺术摄影",
-        "thumb": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&q=80",
-        "img": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&q=80",
+        "title": "留白 #03",
+        "type": "摄影作品",
+        "thumb": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80",
+        "img": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80",
         "video": "",
-        "script": "光是摄影师的画笔，影是留白。这组作品探索了自然光在一天中不同时刻与建筑、植物、人体的对话——每一次相遇都是独一无二的。",
+        "script": "过曝风格。",
+        "hasDownload": false
+      }
+    ]
+  },
+  {
+    "title": "摄像作品",
+    "label": "Videography",
+    "accent_color": "#34d399",
+    "cover": "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80",
+    "works": [
+      {
+        "id": 7,
+        "title": "城市呼吸 · 上海",
+        "type": "摄像作品",
+        "thumb": "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80",
+        "img": "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80",
+        "video": "",
+        "script": "城市的节奏藏在天际线的轮廓里。",
+        "hasDownload": false
+      },
+      {
+        "id": 8,
+        "title": "海岸线 · 英吉",
+        "type": "摄像作品",
+        "thumb": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80",
+        "img": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80",
+        "video": "",
+        "script": "浪潮的节拍就是最好的配乐。",
+        "hasDownload": false
+      },
+      {
+        "id": 9,
+        "title": "雨林 · 西双版纳",
+        "type": "摄像作品",
+        "thumb": "https://images.unsplash.com/photo-1536147116438-62679a5e01f2?auto=format&fit=crop&q=80",
+        "img": "https://images.unsplash.com/photo-1536147116438-62679a5e01f2?auto=format&fit=crop&q=80",
+        "video": "",
+        "script": "雨滴是森林的节拍器。",
         "hasDownload": false
       }
     ]
