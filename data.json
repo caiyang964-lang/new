@@ -6,26 +6,6 @@
     "cover": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80",
     "works": [
       {
-        "id": 11,
-        "title": "1",
-        "type": "1",
-        "thumb": "/uploads/images/1777102150401-6fzexn.png",
-        "img": "/uploads/images/1777102150401-6fzexn.png",
-        "video": "",
-        "script": "",
-        "hasDownload": true
-      },
-      {
-        "id": 12,
-        "title": "1",
-        "type": "1",
-        "thumb": "/uploads/images/1777112690285-4w4svj.png",
-        "img": "/uploads/images/1777112690285-4w4svj.png",
-        "video": "",
-        "script": "",
-        "hasDownload": false
-      },
-      {
         "id": 1,
         "title": "失落协议 · 序章",
         "type": "AI短剧",
