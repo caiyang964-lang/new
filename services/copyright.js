@@ -17,7 +17,7 @@ class CopyrightService {
     }
 
     getConfig() {
-        return this.db.prepare('SELECT * FROM copyright_config LIMIT 1').get() || {
+        return this.db.get('SELECT * FROM copyright_config LIMIT 1') || {
             author_name: 'IDEL',
             copyright_text: '© 2026 IDEL. All rights reserved.',
             website: '',
@@ -30,28 +30,17 @@ class CopyrightService {
     }
 
     updateConfig(config) {
-        const existing = this.db.prepare('SELECT id FROM copyright_config LIMIT 1').get();
+        const existing = this.db.get('SELECT id FROM copyright_config LIMIT 1');
         if (existing) {
-            this.db.prepare(`
-                UPDATE copyright_config SET 
-                    author_name = ?, copyright_text = ?, website = ?, email = ?,
-                    watermark_opacity = ?, watermark_position = ?, embed_exif = ?, embed_watermark = ?
-                WHERE id = ?
-            `).run(
-                config.author_name, config.copyright_text, config.website, config.email,
-                config.watermark_opacity, config.watermark_position, 
-                config.embed_exif ? 1 : 0, config.embed_watermark ? 1 : 0,
-                existing.id
-            );
-        } else {
-            this.db.prepare(`
-                INSERT INTO copyright_config (author_name, copyright_text, website, email, watermark_opacity, watermark_position, embed_exif, embed_watermark)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(
+            this.db.run('UPDATE copyright_config SET author_name=?, copyright_text=?, website=?, email=?, watermark_opacity=?, watermark_position=?, embed_exif=?, embed_watermark=? WHERE id=?',
                 config.author_name, config.copyright_text, config.website, config.email,
                 config.watermark_opacity, config.watermark_position,
-                config.embed_exif ? 1 : 0, config.embed_watermark ? 1 : 0
-            );
+                config.embed_exif ? 1 : 0, config.embed_watermark ? 1 : 0, existing.id);
+        } else {
+            this.db.run('INSERT INTO copyright_config (author_name, copyright_text, website, email, watermark_opacity, watermark_position, embed_exif, embed_watermark) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                config.author_name, config.copyright_text, config.website, config.email,
+                config.watermark_opacity, config.watermark_position,
+                config.embed_exif ? 1 : 0, config.embed_watermark ? 1 : 0);
         }
     }
 
@@ -213,7 +202,7 @@ ${config.copyright_text}
      * 处理下载请求：根据文件类型生成带版权的版本
      */
     async processDownload(workId, clientIp, userAgent) {
-        const work = this.db.prepare('SELECT * FROM works WHERE id = ?').get(workId);
+        const work = this.db.get('SELECT * FROM works WHERE id = ?', workId);
         if (!work) throw new Error('作品不存在');
         if (!work.download_file) throw new Error('该作品暂无可下载文件');
 
@@ -240,8 +229,8 @@ ${config.copyright_text}
         }
 
         // 记录下载
-        this.db.prepare('INSERT INTO downloads (work_id, ip_address, user_agent) VALUES (?, ?, ?)').run(workId, clientIp, userAgent);
-        this.db.prepare('UPDATE works SET download_count = download_count + 1 WHERE id = ?').run(workId);
+        this.db.run('INSERT INTO downloads (work_id, ip_address, user_agent) VALUES (?, ?, ?)', workId, clientIp, userAgent);
+        this.db.run('UPDATE works SET download_count = download_count + 1 WHERE id = ?', workId);
 
         return {
             path: outputPath,
